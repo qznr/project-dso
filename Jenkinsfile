@@ -15,7 +15,7 @@ pipeline {
         stage('Checkout') {
             steps {
                 git branch: 'main',
-                    url: "https://${GITHUB_TOKEN}@github.com/yourusername/your-repo.git"
+                    url: "https://${GITHUB_TOKEN}@github.com/qznr/project-dso.git"
             }
         }
 
