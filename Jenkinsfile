@@ -3,7 +3,6 @@ pipeline {
 
     environment {
         GITHUB_TOKEN = credentials('DSO4')
-
         DEPLOY_HOST = '10.34.100.157'
         DEPLOY_USER = 'dso504'
     }
@@ -13,11 +12,10 @@ pipeline {
     }
 
     stages {
-        stage('Checkout') {
+        stage('Prepare') {
             steps {
-                echo "📦 Fetching latest code from GitHub..."
-                git branch: 'main',
-                    url: "https://${GITHUB_TOKEN}@github.com/qznr/project-dso.git"
+                echo "📦 Using code checked out by Jenkins"
+                sh 'ls -la'  // confirm files exist
             }
         }
 
