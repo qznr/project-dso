@@ -1,0 +1,69 @@
+services:
+  db_postgres:
+    image: postgres:17-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-app2_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-testpass}
+      POSTGRES_DB: ${POSTGRES_DB:-app2_db}
+    volumes:
+      - db_postgres_data:/var/lib/postgresql/data
+    networks:
+      - dso4
+
+  db_mariadb:
+    image: mariadb:11.4
+    restart: always
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-ojs_db}
+      MYSQL_USER: ${MYSQL_USER:-ojs_user}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-testpass}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpass}
+    volumes:
+      - db_mariadb_data:/var/lib/mysql
+    networks:
+      - dso4
+
+  ojs:
+    image: pkpofficial/ojs:3_3_0-16
+    restart: always
+    ports:
+      - "8080:80"
+    environment:
+      DATABASE_DRIVER: mysql
+      DATABASE_HOST: db_mariadb
+      DATABASE_NAME: ${MYSQL_DATABASE:-ojs_db}
+      DATABASE_USER: ${MYSQL_USER:-ojs_user}
+      DATABASE_PASSWORD: ${MYSQL_PASSWORD:-testpass}
+    volumes:
+      - ojs_files:/var/www/html/files
+    networks:
+      - dso4
+      - proxy
+
+  app2:
+    build:
+      context: ./app2
+      dockerfile: Dockerfile
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      DB_HOST: db_postgres
+      DB_USER: ${POSTGRES_USER:-app2_user}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-testpass}
+      DB_NAME: ${POSTGRES_DB:-app2_db}
+      NODE_ENV: ${NODE_ENV:-development}
+    networks:
+      - dso4
+      - proxy
+
+volumes:
+  db_postgres_data:
+  db_mariadb_data:
+  ojs_files:
+
+networks:
+  dso4:
+  proxy:
+    external: true

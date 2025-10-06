@@ -1,0 +1,81 @@
+services:
+  db_postgres:
+    image: postgres:17-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-app2_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-testpass}
+      POSTGRES_DB: ${POSTGRES_DB:-app2_db}
+    volumes:
+      - db_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - dso4
+
+  db_mariadb:
+    image: mariadb:11.4
+    restart: always
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-ojs_db}
+      MYSQL_USER: ${MYSQL_USER:-ojs_user}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-testpass}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpass}
+    volumes:
+      - db_mariadb_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - dso4
+
+  ojs:
+    image: pkpofficial/ojs:3_3_0-16
+    restart: always
+    depends_on:
+      db_mariadb:
+        condition: service_healthy
+    environment:
+      DATABASE_DRIVER: mysql
+      DATABASE_HOST: db_mariadb
+      DATABASE_NAME: ${MYSQL_DATABASE:-ojs_db}
+      DATABASE_USER: ${MYSQL_USER:-ojs_user}
+      DATABASE_PASSWORD: ${MYSQL_PASSWORD:-testpass}
+    volumes:
+      - ojs_files:/var/www/html/files
+    networks:
+      - dso4
+      - proxy
+
+  app2:
+    build:
+      context: ./app2
+      dockerfile: Dockerfile
+    restart: always
+    environment:
+      DB_HOST: db_postgres
+      DB_USER: ${POSTGRES_USER:-app2_user}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-testpass}
+      DB_NAME: ${POSTGRES_DB:-app2_db}
+      NODE_ENV: ${NODE_ENV:-development}
+    depends_on:
+      db_postgres:
+        condition: service_healthy
+    networks:
+      - dso4
+      - proxy
+
+volumes:
+  db_postgres_data:
+  db_mariadb_data:
+  ojs_files:
+
+networks:
+  dso4:
+  proxy:
+    external: true
