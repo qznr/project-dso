@@ -2,7 +2,6 @@ pipeline {
     agent any
 
     environment {
-        GITHUB_TOKEN = credentials('DSO4')
         DEPLOY_HOST = '10.34.100.157'
         DEPLOY_USER = 'dso504'
     }
