@@ -6,7 +6,7 @@ node {
 
     try {
         stage('Prepare') {
-            echo "📦 Using code checked out by Jenkins"
+            echo "Using code checked out by Jenkins"
             checkout scm
             sh 'ls -la'
         }
@@ -16,39 +16,39 @@ node {
         }
 
         stage('Deploy to Docker VPS') {
-            echo "🚀 Deploying to Docker VPS..."
-            sshagent (credentials: ['DSO4-ssh']) {
-                sh """
-                    ssh -o StrictHostKeyChecking=no ${DEPLOY_USER}@${DEPLOY_HOST} << 'EOF'
-                      set -e
-                      TARGET_DIR="/home/dso504/project-dso"
-                      REPO_URL="https://github.com/qznr/project-dso.git"
+            echo "Deploying to Docker VPS..."
+            withCredentials([string(credentialsId: 'DSO4-PAT', variable: 'GH_PAT')]) {
+                sshagent (credentials: ['DSO4-ssh']) {
+                    sh """
+                        ssh -o StrictHostKeyChecking=no ${DEPLOY_USER}@${DEPLOY_HOST} << 'EOF'
+                          set -e
+                          TARGET_DIR="/home/dso504/project-dso"
+                          REPO_URL="https://dso504:${GH_PAT}@github.com/qznr/project-dso.git"
 
-                      echo "🔄 Checking and pulling/cloning code on remote..."
-                      mkdir -p "\${TARGET_DIR}" # Ensure target directory exists
-                      cd "\${TARGET_DIR}" || exit 1
+                          echo "Checking and pulling/cloning code on remote..."
+                          mkdir -p "\${TARGET_DIR}"
+                          cd "\${TARGET_DIR}" || exit 1
 
-                      if [ -d .git ]; then
-                        echo "Repository already exists, pulling latest changes..."
-                        git pull origin main
-                      else
-                        echo "Repository not found, cloning from scratch..."
-                        # Clone into the current directory
-                        git clone "\${REPO_URL}" .
-                        # If the clone creates a subdirectory (e.g., project-dso/project-dso),
-                        # you might need to adjust this. But 'git clone <url> .' typically clones into current dir.
-                      fi
+                          if [ -d .git ]; then
+                            echo "Repository already exists, pulling latest changes..."
+                            git config remote.origin.url "\${REPO_URL}"
+                            git pull origin main
+                          else
+                            echo "Repository not found, cloning from scratch..."
+                            git clone "\${REPO_URL}" .
+                          fi
 
-                      echo "🐳 Rebuilding and starting containers..."
-                      docker compose pull
-                      docker compose up -d --build
+                          echo "Rebuilding and starting containers..."
+                          docker compose pull
+                          docker compose up -d --build
 
-                      echo "🧹 Cleaning up unused images..."
-                      docker system prune -f
+                          echo "Cleaning up unused images..."
+                          docker system prune -f
 
-                      echo "✅ Deployment complete!"
-                    EOF
-                """
+                          echo "Deployment complete!"
+                        EOF
+                    """
+                }
             }
         }
     } catch (err) {
