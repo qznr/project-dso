@@ -22,7 +22,7 @@ node {
                     ssh -o StrictHostKeyChecking=no ${DEPLOY_USER}@${DEPLOY_HOST} << 'EOF'
                       set -e
                       echo "Pulling latest code on remote..."
-                      cd /srv/project-dso || exit 1
+                      cd /home/dso504/project-dso || exit 1
                       git pull origin main
 
                       echo "Rebuilding and starting containers..."
