@@ -23,7 +23,7 @@ node {
                         ssh -o StrictHostKeyChecking=no ${DEPLOY_USER}@${DEPLOY_HOST} << 'EOF'
                           set -e
                           TARGET_DIR="/home/dso504/project-dso"
-                          REPO_URL="https://dso504:\${GH_PAT}@github.com/qznr/project-dso.git"
+                          REPO_URL="https://x-oauth-basic:\${GH_PAT}@github.com/qznr/project-dso.git"
 
                           echo "Checking and pulling/cloning code on remote..."
                           mkdir -p "\${TARGET_DIR}"
