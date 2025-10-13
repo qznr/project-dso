@@ -1,29 +1,45 @@
-node {
-    def DEPLOY_HOST = '10.34.100.157'
-    def DEPLOY_USER = 'dso504'
+pipeline {
+    agent any
 
-    currentBuild.result = 'SUCCESS'
+    environment {
+        DEPLOY_HOST = '10.34.100.157'
+        DEPLOY_USER = 'dso504'
+    }
 
-    try {
+    options {
+        ansiColor('xterm')
+        timeout(time: 30, unit: 'MINUTES')
+    }
+
+    stages {
         stage('Prepare') {
-            echo "Using code checked out by Jenkins"
-            checkout scm
-            sh 'ls -la'
+            steps {
+                echo "Using code checked out by Jenkins"
+                checkout scm
+                sh 'ls -la'
+            }
         }
 
         stage('Build & Test') {
-            echo "Code fetched successfully — running tests (if any)..."
+            steps {
+                echo "Code fetched successfully — running tests (if any)..."
+                // You can add test commands here, e.g.:
+                // sh 'npm test' or 'mvn test'
+            }
         }
 
         stage('Deploy to Docker VPS') {
-            echo "Deploying to Docker VPS..."
-            withCredentials([string(credentialsId: 'DSO4-PAT', variable: 'GH_PAT')]) {
+            environment {
+                GH_PAT = credentials('DSO4-PAT')
+            }
+            steps {
+                echo "Deploying to Docker VPS..."
                 sshagent (credentials: ['DSO4-ssh']) {
                     sh """
                         ssh -o StrictHostKeyChecking=no ${DEPLOY_USER}@${DEPLOY_HOST} << 'EOF'
                           set -e
                           TARGET_DIR="/home/dso504/project-dso"
-                          REPO_URL="https://x-oauth-basic:\${GH_PAT}@github.com/qznr/project-dso.git"
+                          REPO_URL="https://dso504:${GH_PAT}@github.com/qznr/project-dso.git"
 
                           echo "Checking and pulling/cloning code on remote..."
                           mkdir -p "\${TARGET_DIR}"
@@ -46,20 +62,22 @@ node {
                           docker system prune -f
 
                           echo "Deployment complete!"
-EOF
+                        EOF
                     """
                 }
             }
         }
-    } catch (err) {
-        currentBuild.result = 'FAILURE'
-        echo "Pipeline failed: ${err.getMessage()}"
-        throw err
-    } finally {
-        if (currentBuild.result == 'SUCCESS') {
+    }
+
+    post {
+        success {
             echo 'Deployment successful!'
-        } else {
+        }
+        failure {
             echo 'Deployment failed!'
+        }
+        always {
+            echo "Pipeline finished with result: ${currentBuild.currentResult}"
         }
     }
 }
