@@ -22,10 +22,6 @@ app.get("/", (req, res) => {
   res.send("Hello, world!");
 });
 
-app.get("/scm", (req, res) => {
-  res.send("SCM is working!");
-});
-
 app.get("/db", async (req, res) => {
   try {
     const result = await client.query("SELECT NOW() AS now");
