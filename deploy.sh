@@ -3,6 +3,7 @@ set -e
 
 TARGET_DIR="/home/dso504/project-dso"
 REPO_URL="https://dso504:${GH_PAT}@github.com/qznr/project-dso.git"
+SERVICE_NAME="app2"
 
 echo ">>> Checking and pulling/cloning code on remote..."
 mkdir -p "${TARGET_DIR}"
@@ -17,9 +18,14 @@ else
   git clone "${REPO_URL}" .
 fi
 
-echo ">>> Rebuilding and starting containers..."
-docker compose pull
+echo ">>> Rebuilding containers..."
 docker compose up -d --build
+
+echo ">>> Waiting for database to be ready..."
+sleep 5
+
+echo ">>> Running Prisma Migrate Deploy..."
+docker compose run --rm -T ${SERVICE_NAME} npx prisma migrate deploy
 
 echo ">>> Cleaning up unused images..."
 docker system prune -f
