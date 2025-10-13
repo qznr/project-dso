@@ -7,7 +7,6 @@ pipeline {
     }
 
     options {
-        wrap([$class: 'AnsiColorBuildWrapper', 'colorMapName': 'xterm'])
         timeout(time: 30, unit: 'MINUTES')
     }
 
@@ -23,7 +22,8 @@ pipeline {
         stage('Build & Test') {
             steps {
                 echo "Code fetched successfully — running tests (if any)..."
-                // Example test commands can go here
+                // Add test commands here if needed, e.g.:
+                // sh 'npm test' or 'mvn test'
             }
         }
 
