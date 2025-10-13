@@ -1,35 +1,30 @@
 import express from "express";
-import pkg from "pg";
-const { Client } = pkg;
+import dotenv from 'dotenv';
+import authRoutes from "./src/routes/auth.routes.js";
+import threadRoutes from "./src/routes/thread.routes.js";
+dotenv.config(); 
 
 const app = express();
 const port = process.env.PORT || 3000;
 
-const client = new Client({
-  host: process.env.DB_HOST || "db_postgres",
-  user: process.env.DB_USER || "app2_user",
-  password: process.env.DB_PASSWORD || "testpass",
-  database: process.env.DB_NAME || "app2_db",
-});
-
-client
-  .connect()
-  .then(() => console.log(" Connected to PostgreSQL"))
-  .catch((err) => console.error("DB connection failed:", err.message));
+// Middleware Global
+app.use(express.json());
 
 // Routes
 app.get("/", (req, res) => {
-  res.send("Hello, world!");
+  res.send("Apps2 Backend Running (Express + Prisma)");
 });
 
-app.get("/db", async (req, res) => {
-  try {
-    const result = await client.query("SELECT NOW() AS now");
-    res.send(`DB connected! Server time: ${result.rows[0].now}`);
-  } catch (err) {
-    res.status(500).send(`DB query failed: ${err.message}`);
-  }
+// ROUTE API
+app.use("/api/auth", authRoutes);
+app.use("/api/threads", threadRoutes);
+
+// Error Handling Middleware
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).send({ message: 'Something broke!', error: err.message });
 });
+
 
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
