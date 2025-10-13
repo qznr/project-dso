@@ -3,6 +3,23 @@ import dotenv from 'dotenv';
 import authRoutes from "./src/routes/auth.routes.js";
 import threadRoutes from "./src/routes/thread.routes.js";
 import userRoutes from "./src/routes/user.routes.js";
+import fs from 'fs';
+import path from 'path';
+
+const uploadDir = 'uploads';
+const profileDir = path.join(uploadDir, 'profiles');
+const attachmentDir = path.join(uploadDir, 'attachments');
+
+// Fungsi untuk memastikan direktori ada
+const ensureDirExists = (dir) => {
+    if (!fs.existsSync(dir)) {
+        console.log(`Creating directory: ${dir}`);
+        fs.mkdirSync(dir, { recursive: true });
+    }
+};
+
+ensureDirExists(profileDir);
+ensureDirExists(attachmentDir);
 dotenv.config(); 
 
 const app = express();
