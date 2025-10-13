@@ -154,3 +154,76 @@ export const createThread = async (req, res) => {
         res.status(500).json({ message: "Gagal membuat thread.", error: error.message });
     }
 };
+
+export const updateThread = async (req, res) => {
+    const currentUserId = req.user.user_id;
+    const threadId = parseInt(req.params.id);
+    const { title, content } = req.body;
+
+    if (isNaN(threadId) || (!title && !content)) {
+        return res.status(400).json({ message: "ID Thread tidak valid atau data yang diubah kosong." });
+    }
+
+    try {
+        // --- IMPLEMENTASI RENTAN (BAC): Pengecekan Kepemilikan Dihilangkan atau Cacat ---
+        // Seharusnya: Cek kepemilikan: const thread = await prisma.thread.findUnique({ where: { thread_id: threadId } });
+        // Lalu: if (thread.user_id !== currentUserId) { return res.status(403).json({ message: "Akses ditolak." }); }
+
+        // KITA HANYA MEMASTIKAN THREAD ADA, BUKAN SIAPA PEMILIKNYA
+        const updatedThread = await prisma.thread.update({
+            where: {
+                thread_id: threadId,
+            },
+            data: {
+                title,
+                content,
+            }
+        });
+
+        res.status(200).json({
+            message: "Thread berhasil diperbarui (VULNERABLE BAC)",
+            thread: updatedThread
+        });
+
+    } catch (error) {
+        if (error.code === 'P2025') {
+            return res.status(404).json({ message: "Thread tidak ditemukan." });
+        }
+        console.error("Error updating thread:", error);
+        res.status(500).json({ message: "Gagal memperbarui thread.", error: error.message });
+    }
+};
+
+// *** TARGET KERENTANAN A01:2021-Broken Access Control (BAC) ***
+export const deleteThread = async (req, res) => {
+    const currentUserId = req.user.user_id;
+    const threadId = parseInt(req.params.id);
+
+    if (isNaN(threadId)) {
+        return res.status(400).json({ message: "ID Thread tidak valid." });
+    }
+
+    try {
+        // --- IMPLEMENTASI RENTAN (BAC): Pengecekan Kepemilikan Dihilangkan ---
+        // KITA HANYA MEMASTIKAN THREAD ADA SAAT PENGHAPUSAN.
+        // Jika kita hanya menghapus berdasarkan thread_id, User A dapat menghapus thread milik User B.
+
+        await prisma.thread.delete({
+            where: {
+                thread_id: threadId,
+                // KODE AMAN AKAN MEMPUNYAI: user_id: currentUserId,
+            }
+        });
+
+        res.status(200).json({
+            message: "Thread berhasil dihapus (VULNERABLE BAC)."
+        });
+
+    } catch (error) {
+        if (error.code === 'P2025') {
+            return res.status(404).json({ message: "Thread tidak ditemukan." });
+        }
+        console.error("Error deleting thread:", error);
+        res.status(500).json({ message: "Gagal menghapus thread.", error: error.message });
+    }
+};
