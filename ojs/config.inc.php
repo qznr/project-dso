@@ -26,10 +26,10 @@
 
 ; Set this to On once the system has been installed
 ; (This is generally done automatically by the installer)
-installed = Off
+installed = On
 
 ; The canonical URL to the OJS installation (excluding the trailing slash)
-base_url = "http://pkp.sfu.ca/ojs"
+base_url = "http://ojs.dso4.com"
 
 ; Session cookie name
 session_cookie_name = OJSSID
@@ -98,7 +98,7 @@ restful_urls = On
 ; An empty string indicates that all hosts should be trusted (not recommended!)
 ; Example:
 ; allowed_hosts = '["myjournal.tld", "anotherjournal.tld", "mylibrary.tld"]'
-allowed_hosts = ''
+allowed_hosts = "[\"ojs.dso4.com\"]"
 
 ; Allow the X_FORWARDED_FOR header to override the REMOTE_ADDR as the source IP
 ; Set this to "On" if you are behind a reverse proxy and you control the
@@ -138,10 +138,10 @@ sitewide_privacy_statement = Off
 [database]
 
 driver = mysqli
-host = localhost
-username = ojs
-password = ojs
-name = ojs
+host = db_mariadb
+username = ojs_user
+password = testpass
+name = ojs_db
 
 ; Set the non-standard port and/or socket, if used
 ; port = 3306
@@ -213,7 +213,7 @@ connection_charset = utf8
 ; Complete path to directory to store uploaded files
 ; (This directory should not be directly web-accessible)
 ; Windows users should use forward slashes
-files_dir = files
+files_dir = /var/www/files
 
 ; Path to the directory to store public uploaded files
 ; (This directory should be web-accessible and the specified path
@@ -252,7 +252,7 @@ filename_revision_match = 70
 
 ; Force SSL connections site-wide and also sets the "Secure" flag for session cookies
 ; See https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie#secure
-force_ssl = On
+force_ssl = Off
 
 ; Force SSL connections for login only
 force_login_ssl = Off
@@ -430,7 +430,7 @@ oai = On
 
 ; OAI Repository identifier. This setting forms part of OAI-PMH record IDs.
 ; Changing this setting may affect existing clients and is not recommended.
-repository_id = ojs.pkp.sfu.ca
+repository_id = "ojs2.ojs.dso4.com"
 
 ; Maximum number of records per request to serve via OAI
 oai_max_records = 100
