@@ -27,8 +27,6 @@ services:
   ojs:
     image: pkpofficial/ojs:3_3_0-16
     restart: always
-    ports:
-      - "8080:80"
     environment:
       DATABASE_DRIVER: mysql
       DATABASE_HOST: db_mariadb
@@ -37,6 +35,7 @@ services:
       DATABASE_PASSWORD: ${MYSQL_PASSWORD:-testpass}
     volumes:
       - ojs_files:/var/www/html/files
+      - ./ojs/config.inc.php:/var/www/html/config.inc.php
     networks:
       - dso4
       - proxy
