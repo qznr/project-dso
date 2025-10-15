@@ -54,6 +54,19 @@ services:
       - dso4
       - proxy
 
+  app2-fe:
+    build:
+      context: ./app2-fe
+      dockerfile: Dockerfile
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+    networks:
+      - dso4
+      - proxy
+
 volumes:
   db_postgres_data:
   db_mariadb_data:
