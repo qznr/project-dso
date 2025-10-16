@@ -60,8 +60,6 @@ services:
       context: ./app2-fe
       dockerfile: Dockerfile
     restart: always
-    ports:
-      - "3000:3000"
     environment:
       NODE_ENV: ${NODE_ENV:-development}
     networks:
