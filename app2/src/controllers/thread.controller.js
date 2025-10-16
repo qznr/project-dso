@@ -56,6 +56,9 @@ export const getThreadDetail = async (req, res) => {
                         },
                         // Include attachments for each post (if needed later for RCE/Path Traversal test)
                         attachments: true, 
+                        _count: {
+                            select: { postLikes: true }
+                        }
                     },
                     orderBy: {
                         created_at: 'asc',
