@@ -46,6 +46,7 @@ Semua endpoint berawalan `/api/`.
 | Metode | Endpoint | Deskripsi | Kebutuhan | Kerentanan |
 | :--- | :--- | :--- | :--- | :--- |
 | `POST` | `/:threadId/posts` | **Membuat balasan pada thread.** | User | **A03: XSS** (pada `content`) |
+| `POST` | `/:postId/like` | **Memberi/Menghapus like pada post.** | User | - |
 | `POST` | `/:postId/attachments` | **Mengunggah attachment** untuk post. | User | **A03: RCE**, **A04: Path Traversal/XSS Metadata** |
 
 ### 4. User dan Profil (`/api/users`)
