@@ -41,7 +41,6 @@ services:
       - ojs_files:/var/www/html/files
     networks:
       - dso4
-      - proxy
 
   app2:
     build:
@@ -58,7 +57,6 @@ services:
       NODE_ENV: ${NODE_ENV:-development}
     networks:
       - dso4
-      - proxy
 
   app2-fe:
     build:
@@ -71,7 +69,6 @@ services:
       NODE_ENV: ${NODE_ENV:-development}
     networks:
       - dso4
-      - proxy
 
 volumes:
   db_postgres_data:
@@ -80,5 +77,3 @@ volumes:
 
 networks:
   dso4:
-  proxy:
-    external: true
