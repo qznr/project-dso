@@ -39,6 +39,74 @@ export const createPost = async (req, res) => {
     }
 };
 
+// *** TARGET KERENTANAN A01:2021-Broken Access Control (BAC) ***
+export const updatePost = async (req, res) => {
+    const postId = parseInt(req.params.postId);
+    const { content } = req.body;
+
+    if (isNaN(postId)) {
+        return res.status(400).json({ message: "ID Post tidak valid." });
+    }
+    if (!content) {
+        return res.status(400).json({ message: "Konten tidak boleh kosong." });
+    }
+
+    try {
+        // --- IMPLEMENTASI RENTAN (BAC): Tidak ada pengecekan kepemilikan ---
+        // Seharusnya ada 'user_id: req.user.user_id' di dalam 'where' clause.
+        // Tanpa itu, setiap pengguna terotentikasi dapat mengedit post milik siapa pun.
+        const updatedPost = await prisma.post.update({
+            where: {
+                post_id: postId,
+            },
+            data: {
+                content,
+            },
+        });
+
+        res.status(200).json({
+            message: "Balasan berhasil diperbarui (VULNERABLE BAC)",
+            post: updatedPost,
+        });
+
+    } catch (error) {
+        if (error.code === 'P2025') {
+            return res.status(404).json({ message: "Balasan tidak ditemukan." });
+        }
+        console.error("Error updating post:", error);
+        res.status(500).json({ message: "Gagal memperbarui balasan.", error: error.message });
+    }
+};
+
+// *** TARGET KERENTANAN A01:2021-Broken Access Control (BAC) ***
+export const deletePost = async (req, res) => {
+    const postId = parseInt(req.params.postId);
+
+    if (isNaN(postId)) {
+        return res.status(400).json({ message: "ID Post tidak valid." });
+    }
+
+    try {
+        // --- IMPLEMENTASI RENTAN (BAC): Tidak ada pengecekan kepemilikan ---
+        // Sama seperti update, endpoint ini memungkinkan pengguna mana pun
+        // untuk menghapus post milik pengguna lain.
+        await prisma.post.delete({
+            where: {
+                post_id: postId,
+            },
+        });
+
+        res.status(200).json({ message: "Balasan berhasil dihapus (VULNERABLE BAC)." });
+
+    } catch (error) {
+        if (error.code === 'P2025') {
+            return res.status(404).json({ message: "Balasan tidak ditemukan." });
+        }
+        console.error("Error deleting post:", error);
+        res.status(500).json({ message: "Gagal menghapus balasan.", error: error.message });
+    }
+};
+
 export const toggleLikePost = async (req, res) => {
     const currentUserId = req.user.user_id;
     const postId = parseInt(req.params.postId);
