@@ -52,3 +52,46 @@ export const uploadAttachmentToPost = async (req, res) => {
         res.status(500).json({ message: "Gagal mengunggah attachment.", error: error.message });
     }
 };
+
+export const uploadAttachmentToThread = async (req, res) => {
+    const currentUserId = req.user.user_id;
+    const threadId = parseInt(req.params.id);
+
+    if (isNaN(threadId)) {
+        return res.status(400).json({ message: "ID Thread tidak valid." });
+    }
+    if (!req.file) {
+        return res.status(400).json({ message: "Tidak ada file yang diunggah." });
+    }
+
+    try {
+        const threadExists = await prisma.thread.findUnique({
+            where: { thread_id: threadId }
+        });
+
+        if (!threadExists) {
+            return res.status(404).json({ message: "Thread yang dituju tidak ditemukan." });
+        }
+
+        const newAttachment = await prisma.attachment.create({
+            data: {
+                user_id: currentUserId,
+                thread_id: threadId,
+                post_id: null,
+                file_name: req.file.originalname,
+                file_path: req.file.path,
+                mime_type: req.file.mimetype,
+                file_size: req.file.size,
+            }
+        });
+
+        res.status(201).json({ 
+            message: "Attachment berhasil diunggah ke thread.", 
+            attachment: newAttachment 
+        });
+
+    } catch (error) {
+        console.error("Error uploading attachment to thread:", error);
+        res.status(500).json({ message: "Gagal mengunggah attachment.", error: error.message });
+    }
+};

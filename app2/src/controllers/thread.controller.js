@@ -19,7 +19,11 @@ export const getThreads = async (req, res) => {
                     author: {
                         select: { username: true }
                     },
+                    attachments: {
+                        select: { file_path: true }
+                    },
                     _count: {
+                        threadLikes: true,
                         select: { posts: true }
                     }
                 },
@@ -62,8 +66,12 @@ export const getThreadDetail = async (req, res) => {
                 author: {
                     select: { username: true }
                 },
+                attachments: true,
                 _count: {
-                    select: { posts: true }
+                    select: { 
+                        posts: true ,
+                        threadLikes: true
+                    }
                 }
             }
         });
@@ -229,5 +237,41 @@ export const deleteThread = async (req, res) => {
         }
         console.error("Error deleting thread:", error);
         res.status(500).json({ message: "Gagal menghapus thread.", error: error.message });
+    }
+};
+
+export const toggleLikeThread = async (req, res) => {
+    const currentUserId = req.user.user_id;
+    const threadId = parseInt(req.params.id);
+
+    if (isNaN(threadId)) {
+        return res.status(400).json({ message: "ID Thread tidak valid." });
+    }
+    const uniqueKey = { thread_id: threadId, user_id: currentUserId };
+
+    try {
+        const existingLike = await prisma.threadLike.findUnique({
+            where: {
+                thread_id_user_id: uniqueKey,
+            }
+        });
+
+        if (existingLike) {
+            await prisma.threadLike.delete({
+                where: {
+                    thread_id_user_id: uniqueKey,
+                },
+            });
+            return res.status(200).json({ message: "Unlike thread berhasil." });
+
+        } else {
+            await prisma.threadLike.create({
+                data: uniqueKey,
+            });
+            return res.status(201).json({ message: "Like thread berhasil." });
+        }
+    } catch (error) {
+        console.error("Error toggling thread like:", error);
+        res.status(500).json({ message: "Gagal memproses operasi like thread.", error: error.message });
     }
 };
