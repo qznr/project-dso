@@ -38,3 +38,40 @@ export const createPost = async (req, res) => {
         res.status(500).json({ message: "Gagal membuat balasan.", error: error.message });
     }
 };
+
+export const toggleLikePost = async (req, res) => {
+    const currentUserId = req.user.user_id;
+    const postId = parseInt(req.params.postId);
+
+    if (isNaN(postId)) {
+        return res.status(400).json({ message: "ID Post tidak valid." });
+    }
+    const uniqueKey = { post_id: postId, user_id: currentUserId };
+
+    try {
+        const existingLike = await prisma.postLike.findUnique({
+            where: {
+                post_id_user_id: uniqueKey,
+            }
+        });
+
+        if (existingLike) {
+            await prisma.postLike.delete({
+                where: {
+                    post_id_user_id: uniqueKey,
+                },
+            });
+            return res.status(200).json({ message: "Unlike berhasil." });
+
+        } else {
+            await prisma.postLike.create({
+                data: uniqueKey,
+            });
+            return res.status(201).json({ message: "Like berhasil." });
+        }
+
+    } catch (error) {
+        console.error("Error toggling like:", error);
+        res.status(500).json({ message: "Gagal memproses operasi like.", error: error.message });
+    }
+};
