@@ -23,8 +23,10 @@ export const getThreads = async (req, res) => {
                         select: { file_path: true }
                     },
                     _count: {
-                        threadLikes: true,
-                        select: { posts: true }
+                        select: {
+                            posts: true,
+                            threadLikes: true
+                        }
                     }
                 },
                 orderBy: {
