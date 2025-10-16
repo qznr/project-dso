@@ -89,36 +89,6 @@ export const login = async (req, res) => {
     }
 };
 
-export const deleteAccount = async (req, res) => {
-    const currentUserId = req.user.user_id;
-
-    // --- KERENTANAN TARGET (A04/CSRF) ---
-    // Cross-Site Request Forgery (CSRF - A04:2021/Insecure Design):
-    //    Endpoint DELETE tanpa validasi CSRF token rentan. Kita tidak akan menambahkan 
-    //    CSRF token, sehingga ini menjadi target Insecure Design.
-
-    try {
-        // Hapus pengguna. Prisma menangani penghapusan kaskade
-        // pada tabel Thread, Post, PostLike, Attachment (jika di setup di schema)
-        // Catatan: Jika Anda tidak mengatur ON DELETE CASCADE di skema prisma, 
-        // Anda harus menghapus data terkait secara manual sebelum menghapus user.
-
-        await prisma.user.delete({
-            where: {
-                user_id: currentUserId,
-            },
-        });
-        res.status(200).json({ message: "Akun berhasil dihapus." });
-
-    } catch (error) {
-        if (error.code === 'P2025') {
-             return res.status(404).json({ message: "Akun tidak ditemukan." });
-        }
-        console.error("Error during account deletion:", error);
-        res.status(500).json({ message: "Gagal memproses penghapusan akun.", error: error.message });
-    }
-};
-
 export const logout = (req, res) => {
     res.status(200).json({ message: "Logout berhasil." });
 };
