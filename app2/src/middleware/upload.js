@@ -33,6 +33,18 @@ const attachmentStorage = multer.diskStorage({
     }
 });
 
+const threadAttachmentStorage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        cb(null, 'uploads/attachments/');
+    },
+    filename: (req, file, cb) => {
+        const ext = path.extname(file.originalname);
+        // Buat nama file unik untuk thread
+        const filename = `thread-${req.params.id}-${Date.now()}${ext}`;
+        cb(null, filename);
+    }
+});
+
 export const uploadProfilePicture = multer({
     storage: profileStorage,
     limits: { fileSize: 2 * 1024 * 1024 }
