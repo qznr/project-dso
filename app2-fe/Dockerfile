@@ -2,10 +2,8 @@ FROM node:24-alpine as builder
 
 WORKDIR /app
 
-COPY app2-fe/package.json .
+COPY . .
 RUN npm install
-
-COPY app2-fe/ .
 RUN npm run build
 
 FROM nginx:alpine
