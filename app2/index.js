@@ -3,6 +3,7 @@ import dotenv from 'dotenv';
 import authRoutes from "./src/routes/auth.routes.js";
 import threadRoutes from "./src/routes/thread.routes.js";
 import userRoutes from "./src/routes/user.routes.js";
+import attachmentRoutes from "./src/routes/attachment.routes.js";
 import fs from 'fs';
 import path from 'path';
 
@@ -34,9 +35,10 @@ app.get("/", (req, res) => {
 });
 
 // ROUTE API
-app.use("/api/auth", authRoutes);
-app.use("/api/threads", threadRoutes);
-app.use("/api/users", userRoutes);
+app.use("/auth", authRoutes);
+app.use("/threads", threadRoutes);
+app.use("/users", userRoutes);
+app.use("/posts", attachmentRoutes); 
 
 // Error Handling Middleware
 app.use((err, req, res, next) => {
