@@ -2,36 +2,49 @@ import { prisma } from '../config/prisma.js';
 
 // Controller untuk melihat daftar thread (Guest Access)
 export const getThreads = async (req, res) => {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
     try {
-        // Ambil semua thread, termasuk nama penulis (User)
-        const threads = await prisma.thread.findMany({
-            select: {
-                thread_id: true,
-                title: true,
-                content: true,
-                created_at: true,
-                author: {
-                    select: {
-                        username: true,
+        const [threads, totalThreads] = await Promise.all([
+            prisma.thread.findMany({
+                skip: skip,
+                take: limit,
+                select: {
+                    thread_id: true,
+                    title: true,
+                    content: true,
+                    created_at: true,
+                    author: {
+                        select: { username: true }
+                    },
+                    _count: {
+                        select: { posts: true }
                     }
                 },
-                _count: {
-                    select: { posts: true }
+                orderBy: {
+                    created_at: 'desc',
                 }
-            },
-            orderBy: {
-                created_at: 'desc',
+            }),
+            prisma.thread.count()
+        ]);
+
+        const totalPages = Math.ceil(totalThreads / limit);
+
+        res.status(200).json({
+            message: "Daftar thread berhasil diambil.",
+            data: threads,
+            pagination: {
+                totalItems: totalThreads,
+                totalPages: totalPages,
+                currentPage: page,
+                itemsPerPage: limit
             }
         });
-
-        res.status(200).json({ 
-            message: "Daftar thread berhasil diambil (Prisma Test OK)",
-            data: threads
-        });
-
     } catch (error) {
         console.error("Error fetching threads:", error);
-        res.status(500).json({ message: "Gagal mengambil data thread dari database.", error: error.message });
+        res.status(500).json({ message: "Gagal mengambil data thread.", error: error.message });
     }
 };
 
@@ -49,20 +62,8 @@ export const getThreadDetail = async (req, res) => {
                 author: {
                     select: { username: true }
                 },
-                posts: {
-                    include: {
-                        author: {
-                            select: { username: true }
-                        },
-                        // Include attachments for each post (if needed later for RCE/Path Traversal test)
-                        attachments: true, 
-                        _count: {
-                            select: { postLikes: true }
-                        }
-                    },
-                    orderBy: {
-                        created_at: 'asc',
-                    }
+                _count: {
+                    select: { posts: true }
                 }
             }
         });

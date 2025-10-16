@@ -143,3 +143,50 @@ export const toggleLikePost = async (req, res) => {
         res.status(500).json({ message: "Gagal memproses operasi like.", error: error.message });
     }
 };
+
+export const getPostsByThread = async (req, res) => {
+    const threadId = parseInt(req.params.threadId);
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 15;
+    const skip = (page - 1) * limit;
+
+    if (isNaN(threadId)) {
+        return res.status(400).json({ message: "ID Thread tidak valid." });
+    }
+
+    try {
+        const [posts, totalPosts] = await Promise.all([
+            prisma.post.findMany({
+                where: { thread_id: threadId },
+                skip: skip,
+                take: limit,
+                include: {
+                    author: { select: { username: true } },
+                    _count: { select: { postLikes: true } },
+                    attachments: true
+                },
+                orderBy: {
+                    created_at: 'asc',
+                }
+            }),
+            prisma.post.count({ where: { thread_id: threadId } })
+        ]);
+
+        const totalPages = Math.ceil(totalPosts / limit);
+
+        res.status(200).json({
+            message: "Daftar balasan berhasil diambil.",
+            data: posts,
+            pagination: {
+                totalItems: totalPosts,
+                totalPages: totalPages,
+                currentPage: page,
+                itemsPerPage: limit
+            }
+        });
+
+    } catch (error) {
+        console.error("Error fetching posts by thread:", error);
+        res.status(500).json({ message: "Gagal mengambil balasan.", error: error.message });
+    }
+};

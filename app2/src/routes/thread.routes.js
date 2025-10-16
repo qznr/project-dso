@@ -8,7 +8,7 @@ import {
     deleteThread
 } from '../controllers/thread.controller.js';
 import { authenticateToken } from '../middleware/auth.js';
-import { createPost } from '../controllers/post.controller.js'; 
+import { createPost, getPostsByThread } from '../controllers/post.controller.js'; 
 
 const router = Router();
 
@@ -16,6 +16,7 @@ const router = Router();
 router.get('/', getThreads); 
 router.get('/search', searchThreads); // SQL Injection Target
 router.get('/:id', getThreadDetail);
+router.get('/:threadId/posts', getPostsByThread);
 
 // User Access
 router.post('/', authenticateToken, createThread); // XSS Target
