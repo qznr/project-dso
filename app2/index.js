@@ -6,6 +6,7 @@ import userRoutes from "./src/routes/user.routes.js";
 import attachmentRoutes from "./src/routes/attachment.routes.js";
 import fs from 'fs';
 import path from 'path';
+import cors from 'cors';
 
 const uploadDir = 'uploads';
 const profileDir = path.join(uploadDir, 'profiles');
@@ -25,6 +26,14 @@ dotenv.config();
 
 const app = express();
 const port = process.env.PORT || 3000;
+
+const corsOptions = {
+  origin: 'http://localhost:3001', 
+  methods: ['GET', 'POST', 'PUT', 'DELETE'], 
+  allowedHeaders: ['Content-Type', 'Authorization'],
+};
+
+app.use(cors(corsOptions));
 
 // Middleware Global
 app.use(express.json());
