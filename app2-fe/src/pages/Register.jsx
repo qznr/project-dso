@@ -184,4 +184,41 @@ function Register({ onLoginClick, onRegisterSuccess }) {
                       >
                         {showPassword ? <EyeOffIcon /> : <EyeIcon />}
                       </InputGroupButton>
-                    </InputG
+                    </InputGroupAddon>
+                  </InputGroup>
+                  <FormMessage />
+                </FieldContent>
+              </Field>
+            )}
+          />
+
+          {form.formState.errors.root?.serverError && (
+            <p className="text-destructive text-sm" role="alert">
+              {form.formState.errors.root.serverError.message}
+            </p>
+          )}
+
+          <Button type="submit" className="w-full" size="lg" disabled={isLoading}>
+            {isLoading ? "Registering..." : "Register"}
+          </Button>
+        </form>
+      </Form>
+
+      <div className="mt-4 text-center text-sm">
+        Already have an account?{" "}
+        <a
+          href="#"
+          onClick={(e) => {
+            e.preventDefault()
+            onLoginClick()
+          }}
+          className="text-primary hover:underline underline-offset-4"
+        >
+          Log In
+        </a>
+      </div>
+    </AuthLayout>
+  )
+}
+
+export default Register
