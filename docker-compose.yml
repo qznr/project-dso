@@ -25,7 +25,9 @@ services:
       - dso4
 
   ojs:
-    image: pkpofficial/ojs:3_3_0-16
+    build:
+      context: ./ojs
+      dockerfile: Dockerfile
     restart: always
     environment:
       DATABASE_DRIVER: mysql
@@ -35,7 +37,9 @@ services:
       DATABASE_PASSWORD: ${MYSQL_PASSWORD:-testpass}
     volumes:
       - ojs_files:/var/www/html/files
+      - ojs_public:/var/www/html/public
       - ./ojs/config.inc.php:/var/www/html/config.inc.php
+
     networks:
       - dso4
       - proxy
@@ -70,6 +74,7 @@ volumes:
   db_postgres_data:
   db_mariadb_data:
   ojs_files:
+  ojs_public:
 
 networks:
   dso4:
