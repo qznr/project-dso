@@ -27,7 +27,8 @@ RUN docker-php-ext-install \
 
 RUN a2enmod rewrite ssl
 
-RUN chown -R www-data:www-data /var/www/html/files /var/www/html/public /var/www/html
+RUN mkdir -p /var/www/html/files /var/www/html/public \
+    && chown -R www-data:www-data /var/www/html/files /var/www/html/public /var/www/html
 
 USER www-data
 
