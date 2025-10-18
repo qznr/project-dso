@@ -1,86 +1,104 @@
+// src/pages/Profile.jsx
 import * as React from "react"
 import { useNavigate } from "react-router-dom"
-import { LogOutIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
+import AuthLayout from "./AuthLayout"
 
 function Profile() {
   const navigate = useNavigate()
-  const [user, setUser] = React.useState(null)
+
+  const [userProfile, setUserProfile] = React.useState({
+    name: "Guest",
+    email: "guest@example.com",
+    bio: "No bio available.",
+    photoUrl: "",
+  })
 
   React.useEffect(() => {
-    const token = localStorage.getItem("authToken")
-    const userProfileString = localStorage.getItem("userProfile")
-
-    if (!token || !userProfileString) {
-      handleLogout()
-      return
+    const authToken = localStorage.getItem("authToken");
+    if (!authToken) {
+      navigate("/");
+      return;
     }
 
-    try {
-      const storedUser = JSON.parse(userProfileString)
-      setUser(storedUser)
-    } catch (e) {
-      console.error("Failed to parse user profile from localStorage", e)
-      handleLogout()
+    const storedProfile = JSON.parse(localStorage.getItem("userProfile"));
+    if (storedProfile) {
+      setUserProfile(storedProfile);
+    } else {
+      // Jika tidak ada profil di localStorage (misal setelah logout dari akun lain dan login),
+      // inisialisasi dengan profil kosong/default. Ini akan diisi oleh handleLoginSuccess di App.jsx
+      // jika login baru terjadi atau diedit nanti.
+      setUserProfile({
+        name: "Welcome User",
+        email: "user@example.com",
+        bio: "This is your default bio.",
+        photoUrl: "",
+      });
     }
-  }, [navigate])
+  }, [navigate]);
+
+  const getInitials = (name) => {
+    if (!name) return "U"
+    const parts = name.trim().split(" ")
+    if (parts.length === 1) return parts[0].charAt(0).toUpperCase()
+    return (
+      parts[0].charAt(0).toUpperCase() + parts[parts.length - 1].charAt(0).toUpperCase()
+    )
+  }
 
   const handleLogout = () => {
-    localStorage.removeItem("authToken")
-    localStorage.removeItem("userProfile")
-    navigate("/login")
+    const confirmLogout = window.confirm("Are you sure you want to log out?")
+    if (confirmLogout) {
+      localStorage.removeItem("authToken")
+      localStorage.removeItem("userProfile") // <--- PASTIkan BARIS INI ADA!
+      navigate("/")
+    }
   }
-
-  if (!user) {
-    return <div className="flex min-h-svh items-center justify-center"></div>;
-  }
-  
-  // Karena data profile yang lengkap (bio, picture path)
-  // kita hanya menampilkan data yang dijamin ada dari response login.
-  const username = user.username;
-  const email = user.email;
 
   return (
-    <div className="flex min-h-svh items-center justify-center p-4">
-      <Card className="w-full max-w-lg p-0">
-        <CardHeader className="flex-row items-center justify-between gap-4 border-b px-6 py-4">
-          <div className="flex flex-col gap-1">
-            <CardTitle>User Profile (Placeholder)</CardTitle>
-            <CardDescription>Data diambil dari sesi login.</CardDescription>
-          </div>
-          <Button onClick={handleLogout} variant="outline" size="sm">
-            <LogOutIcon className="mr-2 size-4" /> Logout
-          </Button>
+    <AuthLayout title="My Profile">
+      <Card className="shadow-lg">
+        <CardHeader className="text-center">
+          <Avatar className="mx-auto size-24 mb-4">
+            {userProfile.photoUrl ? (
+              <AvatarImage src={userProfile.photoUrl} alt={userProfile.name} />
+            ) : (
+              <AvatarFallback>{getInitials(userProfile.name)}</AvatarFallback>
+            )}
+          </Avatar>
+          <CardTitle className="text-2xl font-bold">{userProfile.name}</CardTitle>
+          <p className="text-muted-foreground">{userProfile.email}</p>
         </CardHeader>
-        <CardContent className="flex flex-col gap-6 p-6">
-          <div className="flex items-center gap-4">
-            <Avatar className="size-16">
-              {/* Avatar Image tidak bisa diisi, karena path profile picture tidak ada di respons login */}
-              <AvatarFallback className="text-xl">{username?.[0] || 'U'}</AvatarFallback>
-            </Avatar>
-            <div>
-              <p className="text-2xl font-semibold">{username || 'Guest'}</p>
-              <p className="text-muted-foreground text-sm">{email || 'No email data'}</p>
-            </div>
-          </div>
-          
-          <div className="grid gap-2">
-            <h3 className="font-medium text-lg border-b pb-1">Bio (Pending)</h3>
-            <p className="text-muted-foreground italic min-h-6">
-              Bio belum tersedia.
+        <CardContent className="space-y-4">
+          <div>
+            <h3 className="font-semibold text-lg">Bio</h3>
+            <p className="text-sm text-muted-foreground">
+              {userProfile.bio || "No bio available."}
             </p>
           </div>
 
-          <div className="flex flex-col">
-            <span className="text-sm text-muted-foreground">User ID</span>
-            <span className="font-medium">{user.user_id}</span>
+          <div className="flex flex-col gap-2 mt-4">
+            <Button
+              className="w-full"
+              onClick={() => navigate("/edit-profile")}
+            >
+              Edit Profile
+            </Button>
+
+            <Button
+              className="w-full"
+              variant="destructive"
+              onClick={handleLogout}
+            >
+              Log Out
+            </Button>
           </div>
         </CardContent>
       </Card>
-    </div>
+    </AuthLayout>
   )
 }
 
-export default Profile
+export default Profile;
