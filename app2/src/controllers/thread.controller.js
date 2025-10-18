@@ -69,8 +69,19 @@ export const getThreadDetail = async (req, res) => {
                     select: { username: true }
                 },
                 attachments: true,
+                posts: {
+                    include: {
+                        author: {
+                            select: { username: true }
+                        },
+                        _count: {
+                            select: { postLikes: true }
+                        }
+                    },
+                    orderBy: { created_at: 'asc' }
+                },
                 _count: {
-                    select: { 
+                    select: {
                         posts: true ,
                         threadLikes: true
                     }
