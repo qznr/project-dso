@@ -1,9 +1,13 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { Card } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
+import { Input } from '../components/ui/input';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Heart, MessageSquare } from 'lucide-react';
+import { toast } from 'sonner'; 
+
+// --- Utility Functions ---
 
 function isLoggedIn() {
     return !!localStorage.getItem("authToken");
@@ -23,7 +27,22 @@ function getCurrentUser() {
 
 const apiUrl = import.meta.env.VITE_API_URL;
 
-// Komponen Pembantu untuk Postingan Thread
+// Placeholder untuk debounce hook
+function useDebounce(value, delay) {
+    const [debouncedValue, setDebouncedValue] = useState(value);
+    useEffect(() => {
+        const handler = setTimeout(() => {
+            setDebouncedValue(value);
+        }, delay);
+        return () => {
+            clearTimeout(handler);
+        };
+    }, [value, delay]);
+    return debouncedValue;
+}
+
+// --- Component: ThreadCard ---
+
 const ThreadCard = ({ thread, navigate, onLikeClick }) => {
     // Fungsi untuk mensanitasi konten (VULNERABLE XSS SIMULATION)
     const renderContent = (content) => {
@@ -45,13 +64,10 @@ const ThreadCard = ({ thread, navigate, onLikeClick }) => {
         >
             <div className="flex gap-3 items-center mb-3">
                 <Avatar className="size-10">
-                    {/* Menggunakan AvatarFallback karena tidak ada profile_picture_path di respons thread */}
-                    {/* Placeholder untuk avatar yang benar harusnya diset di sini jika ada path */}
                     <AvatarFallback>{initials}</AvatarFallback>
                 </Avatar>
                 <div>
                     <div className="font-bold text-gray-800">@{thread.username}</div>
-                    {/* Menggabungkan waktu dan tanggal (sesuai wireframe) */}
                     <div className="text-xs text-gray-500">
                         {new Date(thread.createdAt).toLocaleTimeString()} • {new Date(thread.createdAt).toLocaleDateString()}
                     </div>
@@ -59,7 +75,6 @@ const ThreadCard = ({ thread, navigate, onLikeClick }) => {
             </div>
 
             <div className="flex flex-col gap-2">
-                {/* Thread Title */}
                 <h2 className="font-semibold text-lg">{thread.title}</h2>
                 
                 {/* Thread Content - VULNERABLE XSS */}
@@ -121,13 +136,13 @@ export default function Home() {
     const location = useLocation();
     const currentUser = getCurrentUser();
 
-    // Debounce state untuk search (opsional, tapi baik untuk performa)
+    // Debounce state untuk search 
     const debouncedSearchQuery = useDebounce(searchQuery, 500);
 
     const fetchThreads = useCallback(async (query) => {
         setLoading(true);
         try {
-            // Jika ada query, gunakan endpoint search yang rentan SQLi
+            // Logika untuk menentukan endpoint (pencarian vs. daftar semua)
             const endpoint = query 
                 ? `${apiUrl}/threads/search?q=${query}` // VULNERABLE SQLi
                 : `${apiUrl}/threads`;
@@ -135,7 +150,7 @@ export default function Home() {
             const response = await fetch(endpoint);
             
             if (!response.ok) {
-                // Tangani kasus search yang gagal (misalnya karena SQLi error)
+                // Menangani kegagalan yang mungkin disebabkan oleh SQLi
                 if (query) {
                     throw new Error(`Search failed. Response status: ${response.status}. (Check A03: SQLi)`);
                 }
@@ -144,16 +159,17 @@ export default function Home() {
             
             const data = await response.json();
             
-            // Perlu menyesuaikan struktur jika menggunakan /search (Prisma.$queryRawUnsafe mengembalikan array datar)
-            const threadList = Array.isArray(data.data) ? data.data : [data.data].filter(Boolean);
+            // Logika untuk memetakan respons dari API utama dan API search
+            const rawThreads = Array.isArray(data.data) ? data.data : [data.data].filter(Boolean);
 
-            const mappedThreads = threadList.map(thread => ({
-                id: thread.thread_id || thread.id, // Ambil ID dari thread_id atau id
+            const mappedThreads = rawThreads.map(thread => ({
+                id: thread.thread_id || thread.id, 
                 title: thread.title,
                 content: thread.content,
-                username: thread.author?.username || thread.author_username || 'Unknown',
+                // Mengambil username dari author (jika ada) atau author_username (dari queryRawUnsafe)
+                username: thread.author?.username || thread.author_username || 'Unknown', 
                 createdAt: thread.created_at,
-                // Menggunakan optional chaining untuk _count
+                // Gunakan 0 jika tidak ada properti _count (kasus search)
                 likes: thread._count?.threadLikes || 0,
                 postsCount: thread._count?.posts || 0,
                 images: thread.attachments?.map(att => att.file_path) || [],
@@ -173,11 +189,11 @@ export default function Home() {
         } finally {
             setLoading(false);
         }
-    }, [debouncedSearchQuery]); // Dependency pada debounced query
+    }, [debouncedSearchQuery]); 
 
     useEffect(() => {
         fetchThreads(debouncedSearchQuery);
-    }, [location, fetchThreads, debouncedSearchQuery]); 
+    }, [fetchThreads, debouncedSearchQuery]); 
 
     // Handle like/unlike (placeholder frontend logic)
     const handleLikeClick = (threadId, isLiked) => {
@@ -201,20 +217,6 @@ export default function Home() {
         // API call to toggle like goes here
         console.log(`Toggling like API call for thread ID: ${threadId}`);
     };
-
-    // Placeholder untuk debounce hook
-    function useDebounce(value, delay) {
-        const [debouncedValue, setDebouncedValue] = useState(value);
-        useEffect(() => {
-            const handler = setTimeout(() => {
-                setDebouncedValue(value);
-            }, delay);
-            return () => {
-                clearTimeout(handler);
-            };
-        }, [value, delay]);
-        return debouncedValue;
-    }
 
     const initials = currentUser?.username ? currentUser.username[0].toUpperCase() : 'U';
 
@@ -256,7 +258,9 @@ export default function Home() {
                 {loading ? (
                     <Card className="p-6 text-center">Loading threads...</Card>
                 ) : threads.length === 0 ? (
-                    <Card className="p-6 text-center text-gray-500">No threads found.</Card>
+                    <Card className="p-6 text-center text-gray-500">
+                        {searchQuery ? `No threads found for "${searchQuery}".` : "No threads found."}
+                    </Card>
                 ) : (
                     threads.map(thread => (
                         <ThreadCard 
