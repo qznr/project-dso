@@ -2,8 +2,10 @@ FROM node:24-alpine as builder
 
 WORKDIR /app
 
-COPY . .
+COPY package*.json ./
 RUN npm install
+
+COPY . .
 RUN npm run build
 
 FROM nginx:alpine
@@ -11,7 +13,6 @@ FROM nginx:alpine
 RUN rm /etc/nginx/conf.d/default.conf
 
 COPY --from=builder /app/dist /usr/share/nginx/html
-
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 80

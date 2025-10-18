@@ -48,6 +48,7 @@ app.use("/auth", authRoutes);
 app.use("/threads", threadRoutes);
 app.use("/users", userRoutes);
 app.use("/posts", attachmentRoutes); 
+app.use('/uploads', express.static('uploads')); 
 
 // Error Handling Middleware
 app.use((err, req, res, next) => {

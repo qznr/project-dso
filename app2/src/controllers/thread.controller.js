@@ -5,7 +5,6 @@ export const getThreads = async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
-
     try {
         const [threads, totalThreads] = await Promise.all([
             prisma.thread.findMany({
@@ -69,8 +68,19 @@ export const getThreadDetail = async (req, res) => {
                     select: { username: true }
                 },
                 attachments: true,
+                posts: {
+                    include: {
+                        author: {
+                            select: { username: true }
+                        },
+                        _count: {
+                            select: { postLikes: true }
+                        }
+                    },
+                    orderBy: { created_at: 'asc' }
+                },
                 _count: {
-                    select: { 
+                    select: {
                         posts: true ,
                         threadLikes: true
                     }

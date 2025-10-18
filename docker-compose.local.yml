@@ -13,39 +13,6 @@ services:
     networks:
       - dso4
 
-  db_mariadb:
-    image: mariadb:11.4
-    restart: always
-    environment:
-      MYSQL_DATABASE: ${MYSQL_DATABASE:-ojs_db}
-      MYSQL_USER: ${MYSQL_USER:-ojs_user}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-testpass}
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpass}
-    volumes:
-      - db_mariadb_data:/var/lib/mysql
-    networks:
-      - dso4
-
-  ojs:
-    build:
-      context: ./ojs
-      dockerfile: Dockerfile
-    restart: always
-    ports:
-      - "8080:80"
-    environment:
-      DATABASE_DRIVER: mysql
-      DATABASE_HOST: db_mariadb
-      DATABASE_NAME: ${MYSQL_DATABASE:-ojs_db}
-      DATABASE_USER: ${MYSQL_USER:-ojs_user}
-      DATABASE_PASSWORD: ${MYSQL_PASSWORD:-testpass}
-    volumes:
-      - ojs_files:/var/www/html/files
-      - ojs_public:/var/www/html/public
-      - ./ojs/config.inc.php:/var/www/html/config.inc.php
-    networks:
-      - dso4
-
   app2:
     build:
       context: ./app2
@@ -61,6 +28,8 @@ services:
       NODE_ENV: ${NODE_ENV:-development}
     networks:
       - dso4
+    volumes:
+      - app2_uploads:/app/uploads 
 
   app2-fe:
     build:
@@ -76,9 +45,7 @@ services:
 
 volumes:
   db_postgres_data:
-  db_mariadb_data:
-  ojs_files:
-  ojs_public:
+  app2_uploads: 
 
 networks:
   dso4:
