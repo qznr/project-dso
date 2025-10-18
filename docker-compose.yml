@@ -25,6 +25,8 @@ services:
     networks:
       - dso4
       - proxy
+    volumes:
+      - app2_uploads:/app/uploads 
 
   app2-fe:
     build:
@@ -39,6 +41,7 @@ services:
 
 volumes:
   db_postgres_data:
+  app2_uploads:
 
 networks:
   dso4:

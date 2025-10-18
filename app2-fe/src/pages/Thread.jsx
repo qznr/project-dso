@@ -1,141 +1,607 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { Card } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
-import { useNavigate, useLocation } from 'react-router-dom'; // 1. Impor useLocation
+import { Textarea } from '../components/ui/textarea';
+import { ArrowLeft, MoreHorizontal, Trash2, Pencil, Upload, XCircle } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../components/ui/dialog';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../components/ui/dropdown-menu';
+import { Input } from '../components/ui/input'; // Import Input untuk form edit
 
+// Mengganti useToast dengan Sonner
+import { toast } from "sonner"; 
+
+// Pastikan VITE_API_URL dikonfigurasi dengan benar di .env.example (atau diakses via proxy jika di production)
+const apiUrl = import.meta.env.VITE_API_URL;
+
+// Helper untuk memeriksa status login
 function isLoggedIn() {
-  return !!localStorage.getItem("authToken");
+    return !!localStorage.getItem("authToken");
 }
 
-export default function Home() {
-  const [threads, setThreads] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const navigate = useNavigate();
-  const location = useLocation(); // 2. Dapatkan objek lokasi
+const getInitials = (username) => {
+    return username ? username[0].toUpperCase() : 'U';
+};
 
-  // 3. useEffect sekarang akan berjalan setiap kali Anda menavigasi ke halaman ini
-  useEffect(() => {
-    const fetchThreads = async () => {
-      setLoading(true);
-      try {
-        const response = await fetch('/api/threads');
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        const data = await response.json();
-
-        const mappedThreads = data.data.map(thread => ({
-          id: thread.thread_id,
-          title: thread.title,
-          content: thread.content,
-          username: thread.author.username,
-          createdAt: new Date(thread.created_at).toLocaleString(),
-          likes: thread._count.threadLikes,
-          postsCount: thread._count.posts,
-          images: thread.attachments?.map(att => att.file_path) || [],
-          isLiked: false // Anda bisa menambahkan logika untuk memeriksa status like dari API
-        }));
-
-        setThreads(mappedThreads);
-
-      } catch (error) {
-        console.error("Gagal mengambil data threads:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchThreads();
-  }, [location]); // useEffect akan dijalankan ulang jika 'location' berubah
-
-  // Fungsi untuk menangani klik pada tombol like
-  const handleLikeClick = (e, threadId) => {
-    e.stopPropagation();
-
-    setThreads(currentThread => 
-      currentThread.map(thread => {
-        if (thread.id === threadId) {
-          const newLikesCount = thread.isLiked ? thread.likes - 1 : thread.likes + 1;
-          return { ...thread, likes: newLikesCount, isLiked: !thread.isLiked };
-        }
-        return thread;
-      })
-    );
-    
-    // Di aplikasi nyata, Anda akan memanggil API like/unlike di sini
-    console.log(`Toggled like for thread ID: ${threadId}`);
-  };
-
-  return (
-    <div className="bg-gray-100 min-h-screen">
-      {/* Header */}
-      <header className="bg-white border-b sticky top-0 z-10">
-        <div className="container mx-auto flex items-center justify-between p-4 gap-4">
-          <div className="text-2xl font-bold text-gray-800">
-            GameKom
-          </div>
-          <div className="flex-1 max-w-md">
-            <input 
-              className="border bg-gray-50 rounded-md px-4 py-2 w-full" 
-              placeholder="🔍 Search" 
-            />
-          </div>
-          <div className="flex items-center gap-3">
-            {isLoggedIn() && (
-              <Button onClick={() => navigate('/create-thread')}>Post</Button>
-            )}
-            <Avatar>
-              <AvatarImage src="https://github.com/shadcn.png" alt="User Avatar" />
-              <AvatarFallback>U</AvatarFallback>
-            </Avatar>
-          </div>
-        </div>
-      </header>
-
-      {/* Main Content */}
-      <main className="container max-w-2xl mx-auto flex flex-col gap-4 py-6">
-        {loading ? (
-          <Card className="p-6 text-center">Loading threads...</Card>
-        ) : (
-          threads.map(thread => (
-            <Card key={thread.id} className="p-6 cursor-pointer hover:bg-gray-50 transition" onClick={() => navigate(`/thread/${thread.id}`)}>
-              <div className="flex gap-3 items-center mb-4">
-                <Avatar>
-                  <AvatarImage src="https://github.com/shadcn.png" alt="Thread author" />
-                  <AvatarFallback>CN</AvatarFallback>
-                </Avatar>
-                <div>
-                  <div className="font-bold">@{thread.username}</div>
-                  <div className="text-xs text-gray-500">{thread.createdAt}</div>
-                </div>
-              </div>
-              <div className="font-semibold text-lg mb-2">{thread.title}</div>
-              <p className="text-gray-700 mb-4">{thread.content}</p>
-              {thread.images && thread.images.length > 0 && (
-                <div className="flex gap-2 mb-4">
-                  {thread.images.map((img, index) => (
-                    <div key={index} className="w-1/2 h-48 bg-gray-200 rounded-md"></div>
-                  ))}
-                </div>
-              )}
-              <hr className="my-3"/>
-              <div className="flex justify-end gap-6 text-sm text-gray-600">
-                <button
-                  onClick={(e) => handleLikeClick(e, thread.id)}
-                  className={`flex items-center gap-1 transition-colors ${
-                    thread.isLiked ? 'text-red-500' : 'hover:text-red-500'
-                  }`}
-                >
-                  {thread.isLiked ? '♥' : '♡'} {thread.likes || 0}
-                </button>
-                <span className="flex items-center gap-1">💬 {thread.postsCount || 0}</span>
-              </div>
-            </Card>
-          ))
-        )}
-      </main>
-    </div>
-  );
+// Helper function to get current user details
+function getCurrentUser() {
+    const userProfileString = localStorage.getItem("userProfile");
+    if (userProfileString) {
+        try {
+            return JSON.parse(userProfileString);
+        } catch (e) {
+            return null;
+        }
+    }
+    return null;
 }
 
+// Helper untuk mendapatkan user ID dari token (dengan penanganan error yang lebih baik)
+function getCurrentUserId() {
+    const userProfileString = localStorage.getItem("userProfile");
+    if (userProfileString) {
+        try {
+            const user = JSON.parse(userProfileString);
+            return user.user_id; 
+        } catch (e) {
+            console.error("Error parsing user profile:", e);
+            return null;
+        }
+    }
+    return null;
+}
+
+// Komponen untuk menampilkan sebuah Post
+const PostItem = ({ post, isMainThread = false, currentUserId, onPostDeleted, onPostEdited }) => {
+    // Menangani error jika post null
+    if (!post || !post.author) return null; 
+
+    const isReply = !isMainThread;
+    
+    // Gunakan post.author.user_id yang seharusnya sudah ada di post object
+    const isOwner = post.author.user_id === currentUserId; 
+    const authorInitials = getInitials(post.author.username); 
+    const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+    const [editContent, setEditContent] = useState(post.content || '');
+
+    // Fungsi untuk mensanitasi konten (VULNERABLE XSS SIMULATION)
+    const renderContent = (content) => {
+        // PERHATIAN: Ini adalah implementasi SANGAT TIDAK AMAN yang sengaja 
+        // digunakan untuk mensimulasikan dan menguji kerentanan XSS (A03)
+        return <div dangerouslySetInnerHTML={{ __html: content }} />;
+    };
+
+    // --- Handler Edit ---
+    const handleEditPost = async () => {
+        const token = localStorage.getItem("authToken");
+        if (!token) return toast.error("Autentikasi diperlukan.");
+
+        if (isMainThread) {
+            // Edit Thread
+            try {
+                const response = await fetch(`${apiUrl}/threads/${post.id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`,
+                    },
+                    body: JSON.stringify({
+                        title: post.title, // Judul tidak diubah
+                        content: editContent, // VULNERABLE BAC + XSS
+                    }),
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || "Gagal mengedit thread. (Cek A01: BAC)");
+                }
+
+                toast.success("Thread berhasil diperbarui. (A01: BAC masih rentan)");
+                setIsEditDialogOpen(false);
+                onPostEdited(); // Muat ulang data
+            } catch (error) {
+                toast.error("Gagal mengedit thread.", { description: error.message });
+            }
+        } else {
+            // Edit Post (Reply)
+            try {
+                const response = await fetch(`${apiUrl}/posts/${post.id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`,
+                    },
+                    body: JSON.stringify({
+                        content: editContent, // VULNERABLE BAC + XSS
+                    }),
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || "Gagal mengedit post. (Cek A01: BAC)");
+                }
+
+                toast.success("Post berhasil diperbarui. (A01: BAC masih rentan)");
+                setIsEditDialogOpen(false);
+                onPostEdited(); // Muat ulang data
+            } catch (error) {
+                toast.error("Gagal mengedit post.", { description: error.message });
+            }
+        }
+    };
+
+    // --- Handler Delete ---
+    const handleDeletePost = async () => {
+        if (!window.confirm(`Yakin ingin menghapus ${isMainThread ? 'thread utama' : 'post ini'}?`)) return;
+
+        const token = localStorage.getItem("authToken");
+        if (!token) return toast.error("Autentikasi diperlukan.");
+
+        const endpoint = isMainThread ? `${apiUrl}/threads/${post.id}` : `${apiUrl}/posts/${post.id}`;
+        
+        try {
+            const response = await fetch(endpoint, {
+                method: 'DELETE', // VULNERABLE BAC
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                },
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || `Gagal menghapus ${isMainThread ? 'thread' : 'post'}. (Cek A01: BAC)`);
+            }
+
+            toast.success(`${isMainThread ? 'Thread' : 'Post'} berhasil dihapus. (A01: BAC masih rentan)`);
+            onPostDeleted(isMainThread); // Muat ulang data atau redirect jika thread utama
+        } catch (error) {
+            toast.error(`Gagal menghapus ${isMainThread ? 'thread' : 'post'}.`, { description: error.message });
+        }
+    };
+
+    const threadTitle = post.title;
+
+    return (
+        <>
+            <Card className={`p-4 border-none shadow-none`}>
+                <div className="flex justify-between items-start mb-2">
+                    {/* Header Post */}
+                    <div className="flex gap-3 items-center">
+                        <Avatar>
+                            <AvatarFallback>{authorInitials}</AvatarFallback>
+                        </Avatar>
+                        <div>
+                            <div className="font-bold">@{post.author.username || 'Unknown'}</div>
+                            <div className="text-xs text-gray-500">{post.createdAt || "Date not available"}</div>
+                        </div>
+                    </div>
+                    
+                    {/* Menu Aksi (Edit/Delete) - Hanya untuk pemilik */}
+                    {isLoggedIn() && isOwner && (
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
+                                    <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => setIsEditDialogOpen(true)}>
+                                    <Pencil className="mr-2 h-4 w-4" /> Edit
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={handleDeletePost} className="text-red-600">
+                                    <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    )}
+                </div>
+
+                {/* Judul Thread Utama */}
+                {isMainThread && <div className="text-xl font-bold mb-3">{threadTitle}</div>}
+
+                {/* Reply To */}
+                {isReply && post.replyingTo && (
+                    <div className="text-sm text-blue-600 mb-2 ml-14">
+                        Replying to <span className="font-semibold">@{post.replyingTo}</span>
+                    </div>
+                )}
+
+                {/* Konten Post */}
+                <div className={`text-gray-700 mb-4 ${isReply ? 'ml-14' : ''}`}>
+                    {renderContent(post.content)} 
+                </div>
+
+                {/* Media/Attachments */}
+                {post.images && post.images.length > 0 && (
+                    <div className={`flex flex-wrap gap-2 mb-4 ${isReply ? 'ml-14' : ''}`}>
+                        {post.images.map((img, index) => (
+                            // *** PERBAIKAN: Menggunakan URL statis yang benar ***
+                            <div key={index} className="w-full sm:w-1/2 md:w-1/3 max-h-64 overflow-hidden rounded-lg border">
+                                <img 
+                                    src={`${apiUrl}/${img}`} 
+                                    alt={`Attachment ${index}`} 
+                                    className="object-cover w-full h-full" 
+                                    onError={(e) => {
+                                        e.target.onerror = null; 
+                                        e.target.src = "https://via.placeholder.com/150?text=Error+Loading+Image"; // Fallback image
+                                    }}
+                                />
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                {/* Footer Interaksi */}
+                <hr className="my-3"/>
+                <div className="flex justify-end gap-6 text-sm text-gray-600">
+                    <span className="flex items-center gap-1">
+                        {/* Status Like (placeholder) */}
+                        <button className="hover:text-red-500 transition-colors">
+                            {post.isLiked ? '♥' : '♡'}
+                        </button>
+                        {post.likes || 0}
+                    </span>
+                    <span className="flex items-center gap-1">
+                        {isMainThread ? `💬 ${post.postsCount || 0}` : '💬 1'}
+                    </span>
+                </div>
+            </Card>
+
+            {/* Modal Edit Post */}
+            <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+                <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                        <DialogTitle>Edit {isMainThread ? 'Thread' : 'Post'}</DialogTitle>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                        <Textarea
+                            value={editContent}
+                            onChange={(e) => setEditContent(e.target.value)}
+                            rows={5}
+                        />
+                    </div>
+                    <DialogFooter>
+                        <Button onClick={() => setIsEditDialogOpen(false)} variant="ghost">Batal</Button>
+                        <Button onClick={handleEditPost}>Simpan Perubahan</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        </>
+    );
+};
+
+// Komponen Utama ThreadPage
+export default function ThreadPage() {
+    const { id } = useParams();
+    const navigate = useNavigate();
+    const currentUser = getCurrentUser();
+    const currentUserId = getCurrentUserId();
+    const currentUserInitials = getInitials(currentUser?.username);
+    const fileInputRef = useRef(null);
+
+    const [mainThread, setMainThread] = useState(null);
+    const [posts, setPosts] = useState([]);
+    const [replyContent, setReplyContent] = useState('');
+    const [loading, setLoading] = useState(true);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [selectedFile, setSelectedFile] = useState(null);
+
+    const fetchThreadData = useCallback(async () => {
+        setLoading(true);
+        try {
+            // 1. Ambil Detail Thread
+            const threadResponse = await fetch(`${apiUrl}/threads/${id}`);
+            if (!threadResponse.ok) throw new Error("Gagal mengambil detail thread.");
+            const threadData = await threadResponse.json();
+
+            // 2. Ambil Post/Balasan
+            const postsResponse = await fetch(`${apiUrl}/threads/${id}/posts`);
+            if (!postsResponse.ok) throw new Error("Gagal mengambil balasan.");
+            const postsData = await postsResponse.json();
+
+            // Mapping Thread Utama
+            const mappedThread = {
+                id: threadData.data.thread_id,
+                title: threadData.data.title,
+                content: threadData.data.content,
+                author: {
+                    username: threadData.data.author?.username,
+                    user_id: threadData.data.user_id,
+                },
+                username: threadData.data.author?.username,
+                createdAt: new Date(threadData.data.created_at).toLocaleString('en-US', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short', year: '2-digit' }),
+                likes: threadData.data._count.threadLikes,
+                postsCount: threadData.data._count.posts,
+                images: threadData.data.attachments?.map(att => att.file_path) || [], 
+                isLiked: false,
+            };
+            setMainThread(mappedThread);
+
+            // Mapping Balasan
+            const mappedPosts = postsData.data.map(post => ({
+                id: post.post_id,
+                content: post.content,
+                author: { 
+                    username: post.author?.username,
+                    user_id: post.user_id
+                },
+                createdAt: new Date(post.created_at).toLocaleString('en-US', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short', year: '2-digit' }),
+                likes: post._count.postLikes,
+                images: post.attachments?.map(att => att.file_path) || [], 
+                replyingTo: mappedThread.username, 
+            }));
+            setPosts(mappedPosts);
+
+        } catch (error) {
+            console.error("Error fetching thread data:", error.message);
+            setMainThread(null);
+            toast.error("Gagal memuat konten thread.", { description: error.message });
+        } finally {
+            setLoading(false);
+        }
+    }, [id]);
+
+    useEffect(() => {
+        fetchThreadData();
+    }, [fetchThreadData]);
+
+    const handlePostDeleted = (isMainThread) => {
+        if (isMainThread) {
+            // Jika thread utama dihapus, redirect ke Home
+            navigate('/');
+        } else {
+            // Jika balasan dihapus, refresh data
+            fetchThreadData();
+        }
+    }
+
+    // Handler untuk Attachment File
+    const handleFileChange = (event) => {
+        const file = event.target.files[0];
+        if (file) {
+            // Validasi sederhana: Max 5MB
+            if (file.size > 5 * 1024 * 1024) {
+                toast.error("Gagal", { description: "Ukuran file maksimal 5MB." });
+                setSelectedFile(null);
+                if (fileInputRef.current) fileInputRef.current.value = "";
+                return;
+            }
+            setSelectedFile(file);
+            toast.info(`File dipilih: ${file.name}. (Siap untuk diunggah)`);
+        }
+    };
+
+    const handleRemoveFile = () => {
+        setSelectedFile(null);
+        if (fileInputRef.current) fileInputRef.current.value = "";
+    };
+
+    const handleAddImageClick = () => {
+        if (!isLoggedIn()) {
+             toast.warning("Akses Ditolak", { description: "Anda harus login untuk mengunggah gambar." });
+             return;
+        }
+        fileInputRef.current.click();
+    };
+
+
+    // Fungsi untuk mengirim balasan (Termasuk attachment jika ada)
+    const handlePostReply = async () => {
+        if (!isLoggedIn()) {
+            toast.warning("Akses Ditolak", { description: "Anda harus login untuk membalas." });
+            return;
+        }
+
+        if (replyContent.trim() === "" && !selectedFile) {
+            toast.warning("Konten Kosong", { description: "Post harus berisi teks atau gambar." });
+            return;
+        }
+
+        setIsSubmitting(true);
+        const token = localStorage.getItem("authToken");
+        
+        try {
+            // 1. Buat Post Baru (Tanpa Attachment)
+            const postResponse = await fetch(`${apiUrl}/threads/${id}/posts`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`,
+                },
+                body: JSON.stringify({
+                    content: replyContent, // VULNERABLE XSS (A03)
+                }),
+            });
+
+            const postData = await postResponse.json();
+            if (!postResponse.ok) {
+                throw new Error(postData.message || "Gagal membuat post balasan.");
+            }
+            const newPostId = postData.post.post_id;
+            
+            // 2. Jika ada file, upload attachment ke post yang baru dibuat
+            if (selectedFile && newPostId) {
+                const formData = new FormData();
+                formData.append('file', selectedFile);
+
+                const attachmentResponse = await fetch(`${apiUrl}/posts/${newPostId}/attachments`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        // Content-Type tidak perlu diset, karena FormData akan menanganinya
+                    },
+                    body: formData, // VULNERABLE RCE/Path Traversal (A03, A04)
+                });
+
+                if (!attachmentResponse.ok) {
+                    toast.warning("Post dibuat, tetapi GAGAL mengunggah attachment.", { description: "Cek log server untuk A03: RCE/Path Traversal." });
+                } else {
+                    toast.success("Attachment berhasil diunggah.");
+                }
+            }
+
+            toast.success("Balasan berhasil dikirim.");
+
+            // Reset state
+            setReplyContent('');
+            setSelectedFile(null);
+            if (fileInputRef.current) fileInputRef.current.value = "";
+            
+            // Muat ulang data thread dan posts
+            fetchThreadData(); 
+
+        } catch (error) {
+            console.error("Error posting reply:", error);
+            toast.error("Terjadi kesalahan saat mengirim balasan.", { description: error.message });
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    if (loading) {
+        return (
+            <div className="flex min-h-svh items-center justify-center">
+                <p>Loading thread...</p>
+            </div>
+        )
+    }
+
+    if (!mainThread) {
+        return (
+            <div className="flex min-h-svh flex-col items-center justify-center p-4">
+                <p className="text-xl font-bold">Thread Not Found</p>
+                <Button className="mt-4" onClick={() => navigate('/')}>Go Home</Button>
+            </div>
+        )
+    }
+
+    return (
+        <div className="bg-gray-100 min-h-screen">
+            {/* Header (Top Navigation & Search) */}
+            <header className="bg-white border-b sticky top-0 z-20">
+                <div className="container mx-auto flex items-center justify-between p-4 gap-4 max-w-2xl">
+                    <div className="flex-1 max-w-md">
+                        {/* Search Input Placeholder */}
+                        <Input 
+                            className="border bg-gray-50 rounded-full px-4 py-2 w-full text-sm" 
+                            placeholder="🔍 Search" 
+                        />
+                    </div>
+                    <div className="flex items-center gap-3">
+                        {isLoggedIn() && (
+                            <Button onClick={() => navigate('/create-thread')} className="rounded-full">Post</Button>
+                        )}
+                        <Avatar onClick={() => navigate('/profile')} className="cursor-pointer size-10">
+                            <AvatarFallback>{currentUserInitials}</AvatarFallback>
+                        </Avatar>
+                    </div>
+                </div>
+            </header>
+
+            {/* Main Content Thread */}
+            <main className="container max-w-2xl mx-auto border-x border-gray-200 bg-white min-h-[calc(100vh-65px)]">
+                
+                {/* Bagian Navigasi Kembali dan Judul */}
+                <div className="flex items-center gap-4 py-3 px-4 bg-white border-b border-gray-200 sticky top-[65px] z-10">
+                    <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="rounded-full">
+                        <ArrowLeft className="w-5 h-5" />
+                    </Button>
+                    <span className="text-xl font-semibold">Thread Detail</span>
+                </div>
+
+                {/* 1. Thread Utama */}
+                <div className="p-4 bg-white border-b border-gray-200">
+                    <PostItem 
+                        post={mainThread} 
+                        isMainThread={true} 
+                        currentUserId={currentUserId}
+                        onPostEdited={fetchThreadData}
+                        onPostDeleted={handlePostDeleted} 
+                    />
+                </div>
+                
+                {/* 2. Form Balasan */}
+                {isLoggedIn() && (
+                    <div className="p-4 bg-white border-b border-gray-200">
+                        <div className="flex gap-3">
+                            <Avatar className="w-10 h-10">
+                                <AvatarFallback>{currentUserInitials}</AvatarFallback>
+                            </Avatar>
+                            <div className="flex-1">
+                                <Textarea
+                                    placeholder="Post your reply"
+                                    value={replyContent}
+                                    onChange={(e) => setReplyContent(e.target.value)}
+                                    className="resize-none border-none focus-visible:ring-0 text-md p-2"
+                                    rows={2}
+                                    disabled={isSubmitting}
+                                />
+                                {selectedFile && (
+                                    <div className="text-sm text-green-600 mt-1 ml-2 flex items-center justify-between p-2 bg-green-50 rounded-md">
+                                        <div className="flex items-center gap-2">
+                                            <Upload className="h-3 w-3" /> File dipilih: {selectedFile.name} 
+                                        </div>
+                                        <Button variant="ghost" size="icon" onClick={handleRemoveFile} className="h-6 w-6 text-red-500 hover:bg-red-100">
+                                            <XCircle className="h-4 w-4" />
+                                        </Button>
+                                    </div>
+                                )}
+                                <div className="flex justify-between items-center mt-3 gap-2">
+                                    {/* Input file tersembunyi */}
+                                    <input 
+                                        type="file" 
+                                        ref={fileInputRef} 
+                                        onChange={handleFileChange} 
+                                        className="hidden" 
+                                        disabled={isSubmitting}
+                                    />
+                                    
+                                    <Button 
+                                        variant="ghost" 
+                                        size="sm" 
+                                        onClick={handleAddImageClick} 
+                                        className="text-blue-500 hover:bg-blue-50"
+                                        disabled={isSubmitting}
+                                    >
+                                        Add Image
+                                    </Button> 
+
+                                    <Button 
+                                        onClick={handlePostReply}
+                                        disabled={isSubmitting || (!replyContent.trim() && !selectedFile)}
+                                        className="rounded-full"
+                                    >
+                                        {isSubmitting ? "Posting..." : "Post"}
+                                    </Button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+                
+                {/* 3. Daftar Balasan */}
+                <div className="mt-0">
+                    <h2 className="text-lg font-bold p-4 border-b">Replies ({posts.length})</h2>
+                    {posts.map(post => (
+                        <div key={post.id} className="p-0 bg-white border-b border-gray-200">
+                            <PostItem 
+                                post={post} 
+                                isMainThread={false} 
+                                currentUserId={currentUserId}
+                                onPostDeleted={handlePostDeleted} 
+                                onPostEdited={fetchThreadData}  
+                            />
+                        </div>
+                    ))}
+
+                    {posts.length === 0 && (
+                        <div className="p-6 text-center text-gray-500 bg-white">
+                            Belum ada balasan. Jadilah yang pertama!
+                        </div>
+                    )}
+                </div>
+            </main>
+        </div>
+    );
+}
