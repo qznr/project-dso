@@ -98,10 +98,10 @@ const PostItem = ({ post, isMainThread = false, currentUserId, onPostDeleted, on
 
                 if (!response.ok) {
                     const errorData = await response.json();
-                    throw new Error(errorData.message || "Gagal mengedit thread. (Cek A01: BAC)");
+                    throw new Error(errorData.message || "Gagal mengedit thread.");
                 }
 
-                toast.success("Thread berhasil diperbarui. (A01: BAC masih rentan)");
+                toast.success("Thread berhasil diperbarui.");
                 setIsEditDialogOpen(false);
                 onPostEdited(); // Muat ulang data
             } catch (error) {
@@ -126,11 +126,11 @@ const PostItem = ({ post, isMainThread = false, currentUserId, onPostDeleted, on
                     throw new Error(errorData.message || "Gagal mengedit post. (Cek A01: BAC)");
                 }
 
-                toast.success("Post berhasil diperbarui. (A01: BAC masih rentan)");
+                toast.success("Post berhasil diperbarui.");
                 setIsEditDialogOpen(false);
                 onPostEdited(); // Muat ulang data
             } catch (error) {
-                toast.error("Gagal mengedit post.", { description: error.message });
+                toast.error("Gagal mengedit post.");
             }
         }
     };
@@ -154,13 +154,13 @@ const PostItem = ({ post, isMainThread = false, currentUserId, onPostDeleted, on
 
             if (!response.ok) {
                 const errorData = await response.json();
-                throw new Error(errorData.message || `Gagal menghapus ${isMainThread ? 'thread' : 'post'}. (Cek A01: BAC)`);
+                throw new Error(errorData.message || `Gagal menghapus ${isMainThread ? 'thread' : 'post'}.`);
             }
 
-            toast.success(`${isMainThread ? 'Thread' : 'Post'} berhasil dihapus. (A01: BAC masih rentan)`);
+            toast.success(`${isMainThread ? 'Thread' : 'Post'} berhasil dihapus.`);
             onPostDeleted(isMainThread); // Muat ulang data atau redirect jika thread utama
         } catch (error) {
-            toast.error(`Gagal menghapus ${isMainThread ? 'thread' : 'post'}.`, { description: error.message });
+            toast.error(`Gagal menghapus ${isMainThread ? 'thread' : 'post'}.`);
         }
     };
 
@@ -369,7 +369,7 @@ export default function ThreadPage({ forceLogout }) {
         } catch (error) {
             console.error("Error fetching thread data:", error.message);
             setMainThread(null);
-            toast.error("Gagal memuat konten thread.", { description: error.message });
+            toast.error("Gagal memuat konten thread.");
         } finally {
             setLoading(false);
         }
@@ -468,7 +468,7 @@ export default function ThreadPage({ forceLogout }) {
                 });
 
                 if (!attachmentResponse.ok) {
-                    toast.warning("Post dibuat, tetapi GAGAL mengunggah attachment.", { description: "Cek log server untuk A03: RCE/Path Traversal." });
+                    toast.warning("Post dibuat, tetapi GAGAL mengunggah attachment.");
                 } else {
                     toast.success("Attachment berhasil diunggah.");
                 }
@@ -486,7 +486,7 @@ export default function ThreadPage({ forceLogout }) {
 
         } catch (error) {
             console.error("Error posting reply:", error);
-            toast.error("Terjadi kesalahan saat mengirim balasan.", { description: error.message });
+            toast.error("Terjadi kesalahan saat mengirim balasan.");
         } finally {
             setIsSubmitting(false);
         }
