@@ -176,20 +176,17 @@ export default function CreateThread({ forceLogout }) {
             currentUser={currentUser}
             profilePictureUrl={profilePictureUrl}
             forceLogout={forceLogout}
-            allowSearch={false} // Disable search di halaman ini
+            allowSearch={false}
         >
             <main className="container max-w-2xl mx-auto py-6">
                 <Card className="overflow-hidden">
-                    {/* Header Halaman (Dibuat Manual karena ada Back Button) */}
                     <div className="p-4 flex items-center gap-4 border-b">
                         <button onClick={() => navigate(-1)} className="hover:bg-gray-100 rounded-full p-2 transition-colors">
                             <BackArrowIcon />
                         </button>
-                        {/* Permintaan #3: Ganti Create Post menjadi Create Thread */}
-                        <h1 className="text-xl font-bold">Create Thread</h1> 
+                        <h1 className="text-xl font-bold">Thread</h1> 
                     </div>
 
-                    {/* Form */}
                     <div className="p-6">
                         <form onSubmit={handlePublish} className="flex flex-col gap-6">
                             <div className="flex flex-col gap-2">
@@ -215,7 +212,6 @@ export default function CreateThread({ forceLogout }) {
                                 />
                             </div>
 
-                            {/* File Preview */}
                             {selectedFile && (
                                 <div className="text-sm text-green-600 flex items-center justify-between p-2 bg-green-50 rounded-md">
                                     <div className="flex items-center gap-2">
@@ -227,9 +223,7 @@ export default function CreateThread({ forceLogout }) {
                                 </div>
                             )}
 
-                            {/* Footer Form */}
                             <div className="flex justify-between items-center mt-4">
-                                {/* Input file tersembunyi */}
                                 <input 
                                     type="file" 
                                     ref={fileInputRef} 
@@ -248,7 +242,7 @@ export default function CreateThread({ forceLogout }) {
                                 </Button>
                                 
                                 <Button type="submit" disabled={isSubmitting}>
-                                    {isSubmitting ? 'Publishing...' : 'Publish'}
+                                    {isSubmitting ? 'Publishing...' : 'Create'}
                                 </Button>
                             </div>
                         </form>

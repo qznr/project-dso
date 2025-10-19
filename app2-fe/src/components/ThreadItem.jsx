@@ -3,8 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Heart, MessageSquare } from 'lucide-react';
 
 import { Card } from '@/components/ui/card';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { toast } from 'sonner';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 const apiUrl = import.meta.env.VITE_API_URL;
 
@@ -29,6 +28,7 @@ export default function ThreadItem({ thread, onLikeClick }) {
     const handleCardClick = () => navigate(threadUrl);
 
     const initials = thread.username ? thread.username[0].toUpperCase() : 'U';
+    const authorAvatarUrl = thread.authorProfilePicturePath ? resolveImageUrl(thread.authorProfilePicturePath) : ''; 
 
     return (
         <Card 
@@ -37,6 +37,7 @@ export default function ThreadItem({ thread, onLikeClick }) {
         >
             <div className="flex gap-3 items-center mb-3">
                 <Avatar className="size-10">
+                    <AvatarImage src={authorAvatarUrl} alt={thread.username} /> {/* Menggunakan AvatarImage */}
                     <AvatarFallback>{initials}</AvatarFallback>
                 </Avatar>
                 <div>
@@ -55,7 +56,6 @@ export default function ThreadItem({ thread, onLikeClick }) {
                 </div>
             </div>
 
-            {/* Displaying first image attachment */}
             {thread.images && thread.images.length > 0 && (
                 <div className="w-full h-auto max-h-80 bg-gray-200 rounded-md overflow-hidden my-3">
                     <img 

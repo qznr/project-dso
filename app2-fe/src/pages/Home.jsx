@@ -108,6 +108,7 @@ export default function Home() {
                 title: thread.title,
                 content: thread.content,
                 username: thread.author?.username || thread.author_username || 'Unknown', 
+                authorProfilePicturePath: thread.author?.profile_picture_path || thread.author_profile_picture_path || '', 
                 createdAt: thread.created_at,
                 likes: thread._count?.threadLikes || 0,
                 postsCount: thread._count?.posts || 0,

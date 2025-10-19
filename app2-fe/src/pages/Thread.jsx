@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card } from '../components/ui/card';
 import { Button } from '../components/ui/button';
-import { Avatar, AvatarFallback } from '../components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import { Textarea } from '../components/ui/textarea';
 import { ArrowLeft, MoreHorizontal, Trash2, Pencil, Upload, XCircle, Heart, MessageSquare } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../components/ui/dialog';
@@ -67,6 +67,7 @@ const PostItem = ({ post, isMainThread = false, currentUserId, onPostDeleted, on
     const authorInitials = getInitials(post.author.username); 
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
     const [editContent, setEditContent] = useState(post.content || '');
+    const authorAvatarUrl = post.author.profile_picture_path ? resolveImageUrl(post.author.profile_picture_path) : '';
 
     // Fungsi untuk mensanitasi konten (VULNERABLE XSS SIMULATION)
     const renderContent = (content) => {
@@ -172,6 +173,7 @@ const PostItem = ({ post, isMainThread = false, currentUserId, onPostDeleted, on
                     {/* Header Post */}
                     <div className="flex gap-3 items-center">
                         <Avatar>
+                            <AvatarImage src={authorAvatarUrl} alt={post.author.username} />
                             <AvatarFallback>{authorInitials}</AvatarFallback>
                         </Avatar>
                         <div>
@@ -337,6 +339,7 @@ export default function ThreadPage({ forceLogout }) {
                 author: {
                     username: threadData.data.author?.username,
                     user_id: threadData.data.user_id,
+                    profile_picture_path: threadData.data.author?.profile_picture_path,
                 },
                 username: threadData.data.author?.username,
                 createdAt: new Date(threadData.data.created_at).toLocaleString('en-US', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short', year: '2-digit' }),
@@ -353,7 +356,8 @@ export default function ThreadPage({ forceLogout }) {
                 content: post.content,
                 author: { 
                     username: post.author?.username,
-                    user_id: post.user_id
+                    user_id: post.user_id,
+                    profile_picture_path: post.author?.profile_picture_path,
                 },
                 createdAt: new Date(post.created_at).toLocaleString('en-US', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short', year: '2-digit' }),
                 likes: post._count.postLikes,
@@ -522,7 +526,7 @@ export default function ThreadPage({ forceLogout }) {
                     <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="rounded-full">
                         <ArrowLeft className="w-5 h-5" />
                     </Button>
-                    <span className="text-xl font-semibold">Thread Detail</span>
+                    <span className="text-xl font-semibold">Thread</span>
                 </div>
 
                 {/* 1. Thread Utama */}
