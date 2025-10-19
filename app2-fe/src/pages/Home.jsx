@@ -1,20 +1,13 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { Card } from '../components/ui/card';
-import { Button } from '../components/ui/button';
-import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
-import { Input } from '../components/ui/input';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '../components/ui/dropdown-menu';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { Heart, MessageSquare, LogOut, User } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner'; 
 import { useAuthLogout } from '../App'; 
+import MainLayout from '../layouts/MainLayout';
+import ThreadItem from '../components/ThreadItem';
 
 // --- Utility Functions ---
 const apiUrl = import.meta.env.VITE_API_URL;
-
-function isLoggedIn() {
-    return !!localStorage.getItem("authToken");
-}
 
 function getCurrentUser() {
     const userProfileString = localStorage.getItem("userProfile");
@@ -46,142 +39,6 @@ function useDebounce(value, delay) {
     }, [value, delay]);
     return debouncedValue;
 }
-
-// --- Component: Header Global (Reusable Logic) ---
-function GlobalHeaderContent({ navigate, currentUser, profilePictureUrl, forceLogout }) {
-    const initials = currentUser?.username ? currentUser.username[0].toUpperCase() : 'U';
-
-    return (
-        <>
-            <div className="flex-1 max-w-lg relative">
-                <Input 
-                    className="border bg-gray-50 rounded-full px-4 py-2 w-full pl-10" 
-                    placeholder="Search" 
-                    readOnly // Tampilan saja
-                />
-                <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">🔍</span>
-            </div>
-            
-            <div className="flex items-center gap-3">
-                {isLoggedIn() ? (
-                    <>
-                        {/* TOMBOL POST (Constraint 1 & 2) */}
-                        <Button 
-                            onClick={() => navigate('/create-thread')} 
-                            className="rounded-full"
-                            size="sm"
-                        >
-                            Post
-                        </Button>
-                        
-                        {/* AVATAR DENGAN DROPDOWN MENU */}
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Avatar className="cursor-pointer size-10 shrink-0">
-                                    <AvatarImage src={profilePictureUrl} alt={currentUser.username} />
-                                    <AvatarFallback>{initials}</AvatarFallback>
-                                </Avatar>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-56">
-                                <DropdownMenuItem onClick={() => navigate('/profile')}>
-                                    <User className="mr-2 h-4 w-4" />
-                                    <span>Profile</span>
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem onClick={() => forceLogout("Anda berhasil log out.")} className="text-red-600 focus:text-red-600">
-                                    <LogOut className="mr-2 h-4 w-4" />
-                                    <span>Log Out</span>
-                                </DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                    </>
-                ) : (
-                    <Button onClick={() => navigate('/login')} className="rounded-full">
-                        Login
-                    </Button>
-                )}
-            </div>
-        </>
-    );
-}
-
-// --- Component: ThreadCard (Tidak berubah) ---
-const ThreadCard = ({ thread, navigate, onLikeClick }) => {
-    // ... (kode ThreadCard tetap sama)
-    const renderContent = (content) => {
-        return <div dangerouslySetInnerHTML={{ __html: content }} />;
-    };
-
-    const threadUrl = `/thread/${thread.id}`;
-    const handleCardClick = () => navigate(threadUrl);
-
-    const initials = thread.username ? thread.username[0].toUpperCase() : 'U';
-
-    return (
-        <Card 
-            className="p-4 cursor-pointer hover:bg-gray-50 transition" 
-            onClick={handleCardClick}
-        >
-            <div className="flex gap-3 items-center mb-3">
-                <Avatar className="size-10">
-                    <AvatarFallback>{initials}</AvatarFallback>
-                </Avatar>
-                <div>
-                    <div className="font-bold text-gray-800">@{thread.username}</div>
-                    <div className="text-xs text-gray-500">
-                        {new Date(thread.createdAt).toLocaleTimeString()} • {new Date(thread.createdAt).toLocaleDateString()}
-                    </div>
-                </div>
-            </div>
-
-            <div className="flex flex-col gap-2">
-                <h2 className="font-semibold text-lg">{thread.title}</h2>
-                
-                <div className="text-gray-700 mb-2">
-                    {renderContent(thread.content)}
-                </div>
-            </div>
-
-            {thread.images && thread.images.length > 0 && (
-                <div className="flex flex-wrap gap-2 my-3">
-                    {thread.images.slice(0, 2).map((img, index) => (
-                        <div key={index} className="w-full h-48 bg-gray-200 rounded-md sm:w-[calc(50%-4px)] overflow-hidden">
-                             <img 
-                                src={`${apiUrl}/${img}`} 
-                                alt={`Attachment ${index}`} 
-                                className="object-cover w-full h-full" 
-                                onError={(e) => {
-                                    e.target.onerror = null; 
-                                    e.target.src = "https://via.placeholder.com/150?text=Image+Error";
-                                }}
-                            />
-                        </div>
-                    ))}
-                </div>
-            )}
-            
-            <hr className="my-3"/>
-            
-            <div className="flex justify-end gap-6 text-sm text-gray-600">
-                <button
-                    onClick={(e) => {
-                        e.stopPropagation(); 
-                        onLikeClick(thread.id, thread.isLiked);
-                    }}
-                    className={`flex items-center gap-1 transition-colors ${
-                        thread.isLiked ? 'text-red-500' : 'hover:text-red-500'
-                    }`}
-                >
-                    <Heart className="w-4 h-4" fill={thread.isLiked ? 'red' : 'none'} /> 
-                    {thread.likes || 0}
-                </button>
-                <span className="flex items-center gap-1">
-                    <MessageSquare className="w-4 h-4" /> {thread.postsCount || 0}
-                </span>
-            </div>
-        </Card>
-    );
-};
 
 
 export default function Home() {
@@ -223,8 +80,10 @@ export default function Home() {
     const fetchThreads = useCallback(async (query) => {
         setLoading(true);
         try {
+            // Encode query untuk keamanan, meskipun backend rentan SQLi
+            const encodedQuery = encodeURIComponent(query);
             const endpoint = query 
-                ? `${apiUrl}/threads/search?q=${query}` 
+                ? `${apiUrl}/threads/search?q=${encodedQuery}` 
                 : `${apiUrl}/threads`;
             
             const response = await fetch(endpoint);
@@ -280,6 +139,7 @@ export default function Home() {
             return toast.warning("Login required to like posts.");
         }
         
+        // Optimistic UI update
         setThreads(currentThread => 
             currentThread.map(thread => {
                 if (thread.id === threadId) {
@@ -293,44 +153,33 @@ export default function Home() {
         console.log(`Toggling like API call for thread ID: ${threadId}`);
     };
 
-    const initials = currentUser?.username ? currentUser.username[0].toUpperCase() : 'U';
-
     return (
-        <div className="bg-gray-100 min-h-screen">
-            <header className="bg-white border-b sticky top-0 z-10">
-                <div className="container mx-auto flex items-center justify-between p-4 gap-4 max-w-4xl">
-                    <div className="text-2xl font-bold text-gray-800 cursor-pointer" onClick={() => navigate('/')}>
-                        GameKom 
-                    </div>
-                    <GlobalHeaderContent 
-                        navigate={navigate} 
-                        currentUser={currentUser} 
-                        profilePictureUrl={profilePictureUrl} 
-                        forceLogout={forceLogout} 
-                    />
-                </div>
-            </header>
-
-            {/* Main Content */}
-            <main className="container max-w-2xl mx-auto flex flex-col gap-4 py-6">
-                <h1 className="text-2xl font-bold text-gray-800 pl-2">Homepage</h1>
+        <MainLayout 
+            currentUser={currentUser}
+            profilePictureUrl={profilePictureUrl}
+            forceLogout={forceLogout}
+            onSearchChange={setSearchQuery}
+            searchValue={searchQuery}
+            title="Homepage"
+        >
+            <div className="bg-white">
                 {loading ? (
-                    <Card className="p-6 text-center">Loading threads...</Card>
+                    <Card className="p-6 text-center rounded-none shadow-none">Loading threads...</Card>
                 ) : threads.length === 0 ? (
-                    <Card className="p-6 text-center text-gray-500">
+                    <Card className="p-6 text-center text-gray-500 rounded-none shadow-none">
                         {searchQuery ? `No threads found for "${searchQuery}".` : "No threads found."}
                     </Card>
                 ) : (
                     threads.map(thread => (
-                        <ThreadCard 
+                        <ThreadItem 
                             key={thread.id} 
                             thread={thread} 
-                            navigate={navigate} 
                             onLikeClick={handleLikeClick}
                         />
                     ))
                 )}
-            </main>
-        </div>
+                {/* Menghapus gap-4 dan mengganti dengan border-t di ThreadItem (Permintaan #1) */}
+            </div>
+        </MainLayout>
     );
 }

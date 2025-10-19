@@ -2,17 +2,15 @@ import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card } from '../components/ui/card';
 import { Button } from '../components/ui/button';
-import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
+import { Avatar, AvatarFallback } from '../components/ui/avatar';
 import { Textarea } from '../components/ui/textarea';
-import { ArrowLeft, MoreHorizontal, Trash2, Pencil, Upload, XCircle } from 'lucide-react';
+import { ArrowLeft, MoreHorizontal, Trash2, Pencil, Upload, XCircle, Heart, MessageSquare } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../components/ui/dropdown-menu';
-import { Input } from '../components/ui/input'; // Import Input untuk form edit
-
-// Mengganti useToast dengan Sonner
 import { toast } from "sonner"; 
+import GlobalHeader from '../components/GlobalHeader';
+import { useAuthLogout } from '../App';
 
-// Pastikan VITE_API_URL dikonfigurasi dengan benar di .env.example (atau diakses via proxy jika di production)
 const apiUrl = import.meta.env.VITE_API_URL;
 
 // Helper untuk memeriksa status login
@@ -37,7 +35,7 @@ function getCurrentUser() {
     return null;
 }
 
-// Helper untuk mendapatkan user ID dari token (dengan penanganan error yang lebih baik)
+// Helper untuk mendapatkan user ID dari token
 function getCurrentUserId() {
     const userProfileString = localStorage.getItem("userProfile");
     if (userProfileString) {
@@ -52,14 +50,19 @@ function getCurrentUserId() {
     return null;
 }
 
+function resolveImageUrl(path) {
+    if (!path) return "";
+    if (/^https?:\/\//i.test(path)) return path;
+    return `${apiUrl}/${path}`; 
+}
+
+
 // Komponen untuk menampilkan sebuah Post
 const PostItem = ({ post, isMainThread = false, currentUserId, onPostDeleted, onPostEdited }) => {
-    // Menangani error jika post null
     if (!post || !post.author) return null; 
 
     const isReply = !isMainThread;
     
-    // Gunakan post.author.user_id yang seharusnya sudah ada di post object
     const isOwner = post.author.user_id === currentUserId; 
     const authorInitials = getInitials(post.author.username); 
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -87,7 +90,7 @@ const PostItem = ({ post, isMainThread = false, currentUserId, onPostDeleted, on
                         'Authorization': `Bearer ${token}`,
                     },
                     body: JSON.stringify({
-                        title: post.title, // Judul tidak diubah
+                        title: post.title, 
                         content: editContent, // VULNERABLE BAC + XSS
                     }),
                 });
@@ -216,10 +219,9 @@ const PostItem = ({ post, isMainThread = false, currentUserId, onPostDeleted, on
                 {post.images && post.images.length > 0 && (
                     <div className={`flex flex-wrap gap-2 mb-4 ${isReply ? 'ml-14' : ''}`}>
                         {post.images.map((img, index) => (
-                            // *** PERBAIKAN: Menggunakan URL statis yang benar ***
                             <div key={index} className="w-full sm:w-1/2 md:w-1/3 max-h-64 overflow-hidden rounded-lg border">
                                 <img 
-                                    src={`${apiUrl}/${img}`} 
+                                    src={resolveImageUrl(img)} 
                                     alt={`Attachment ${index}`} 
                                     className="object-cover w-full h-full" 
                                     onError={(e) => {
@@ -232,18 +234,18 @@ const PostItem = ({ post, isMainThread = false, currentUserId, onPostDeleted, on
                     </div>
                 )}
 
-                {/* Footer Interaksi */}
+                {/* Footer Interaksi (Permintaan #1: Konsisten Icon) */}
                 <hr className="my-3"/>
                 <div className="flex justify-end gap-6 text-sm text-gray-600">
                     <span className="flex items-center gap-1">
-                        {/* Status Like (placeholder) */}
-                        <button className="hover:text-red-500 transition-colors">
-                            {post.isLiked ? '♥' : '♡'}
+                        <button className="hover:text-red-500 transition-colors flex items-center gap-1">
+                            <Heart className="w-4 h-4" fill={post.isLiked ? 'red' : 'none'} />
                         </button>
                         {post.likes || 0}
                     </span>
                     <span className="flex items-center gap-1">
-                        {isMainThread ? `💬 ${post.postsCount || 0}` : '💬 1'}
+                        <MessageSquare className="w-4 h-4" />
+                        {isMainThread ? `${post.postsCount || 0}` : '1'}
                     </span>
                 </div>
             </Card>
@@ -272,20 +274,47 @@ const PostItem = ({ post, isMainThread = false, currentUserId, onPostDeleted, on
 };
 
 // Komponen Utama ThreadPage
-export default function ThreadPage() {
+export default function ThreadPage({ forceLogout }) {
     const { id } = useParams();
     const navigate = useNavigate();
     const currentUser = getCurrentUser();
     const currentUserId = getCurrentUserId();
-    const currentUserInitials = getInitials(currentUser?.username);
-    const fileInputRef = useRef(null);
-
+    const { forceLogout: globalForceLogout } = useAuthLogout();
+    const actualForceLogout = forceLogout || globalForceLogout; // Use injected forceLogout if available
+    
     const [mainThread, setMainThread] = useState(null);
     const [posts, setPosts] = useState([]);
     const [replyContent, setReplyContent] = useState('');
     const [loading, setLoading] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [selectedFile, setSelectedFile] = useState(null);
+    const [profilePictureUrl, setProfilePictureUrl] = useState("");
+    const fileInputRef = useRef(null);
+    
+    const fetchUserProfile = useCallback(async () => {
+        const token = localStorage.getItem("authToken");
+        if (!token) return;
+
+        try {
+            const res = await fetch(`${apiUrl}/users/profile`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            if (res.ok) {
+                const data = await res.json();
+                const path = data.data.profile_picture_path;
+                setProfilePictureUrl(path ? resolveImageUrl(path) : "");
+            }
+        } catch (error) {
+            console.error("Failed to fetch profile picture path:", error);
+        }
+    }, []);
+
+    useEffect(() => {
+        if (currentUser) {
+            fetchUserProfile();
+        }
+    }, [currentUser, fetchUserProfile]);
+
 
     const fetchThreadData = useCallback(async () => {
         setLoading(true);
@@ -478,26 +507,12 @@ export default function ThreadPage() {
 
     return (
         <div className="bg-gray-100 min-h-screen">
-            {/* Header (Top Navigation & Search) */}
-            <header className="bg-white border-b sticky top-0 z-20">
-                <div className="container mx-auto flex items-center justify-between p-4 gap-4 max-w-2xl">
-                    <div className="flex-1 max-w-md">
-                        {/* Search Input Placeholder */}
-                        <Input 
-                            className="border bg-gray-50 rounded-full px-4 py-2 w-full text-sm" 
-                            placeholder="🔍 Search" 
-                        />
-                    </div>
-                    <div className="flex items-center gap-3">
-                        {isLoggedIn() && (
-                            <Button onClick={() => navigate('/create-thread')} className="rounded-full">Post</Button>
-                        )}
-                        <Avatar onClick={() => navigate('/profile')} className="cursor-pointer size-10">
-                            <AvatarFallback>{currentUserInitials}</AvatarFallback>
-                        </Avatar>
-                    </div>
-                </div>
-            </header>
+            {/* Header (Menggunakan GlobalHeader) */}
+            <GlobalHeader 
+                currentUser={currentUser}
+                profilePictureUrl={profilePictureUrl}
+                forceLogout={actualForceLogout}
+            />
 
             {/* Main Content Thread */}
             <main className="container max-w-2xl mx-auto border-x border-gray-200 bg-white min-h-[calc(100vh-65px)]">
@@ -526,7 +541,7 @@ export default function ThreadPage() {
                     <div className="p-4 bg-white border-b border-gray-200">
                         <div className="flex gap-3">
                             <Avatar className="w-10 h-10">
-                                <AvatarFallback>{currentUserInitials}</AvatarFallback>
+                                <AvatarFallback>{getInitials(currentUser?.username)}</AvatarFallback>
                             </Avatar>
                             <div className="flex-1">
                                 <Textarea
@@ -583,8 +598,8 @@ export default function ThreadPage() {
                 {/* 3. Daftar Balasan */}
                 <div className="mt-0">
                     <h2 className="text-lg font-bold p-4 border-b">Replies ({posts.length})</h2>
-                    {posts.map(post => (
-                        <div key={post.id} className="p-0 bg-white border-b border-gray-200">
+                    {posts.map((post, index) => (
+                        <div key={post.id} className={`p-0 bg-white border-gray-200 ${index < posts.length - 1 ? 'border-b' : ''}`}>
                             <PostItem 
                                 post={post} 
                                 isMainThread={false} 
@@ -596,7 +611,7 @@ export default function ThreadPage() {
                     ))}
 
                     {posts.length === 0 && (
-                        <div className="p-6 text-center text-gray-500 bg-white">
+                        <div className="p-6 text-center text-gray-500 bg-white border-t border-gray-200">
                             Belum ada balasan. Jadilah yang pertama!
                         </div>
                     )}

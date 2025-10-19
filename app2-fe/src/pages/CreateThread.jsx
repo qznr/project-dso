@@ -2,11 +2,11 @@ import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card } from '../components/ui/card';
 import { Button } from '../components/ui/button';
-import { Avatar, AvatarImage, AvatarFallback } from '../components/ui/avatar';
 import { Input } from '../components/ui/input';
 import { Textarea } from '../components/ui/textarea';
 import { toast } from 'sonner';
 import { Upload, XCircle } from 'lucide-react';
+import MainLayout from '../layouts/MainLayout';
 
 // Helper function
 function isLoggedIn() {
@@ -35,7 +35,7 @@ const BackArrowIcon = () => (
     </svg>
 );
 
-export default function CreateThread() {
+export default function CreateThread({ forceLogout }) {
     const navigate = useNavigate();
     const [title, setTitle] = useState('');
     const [content, setContent] = useState('');
@@ -43,7 +43,41 @@ export default function CreateThread() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const fileInputRef = useRef(null);
     const currentUser = getCurrentUser();
-    const initials = currentUser?.username ? currentUser.username[0].toUpperCase() : 'U';
+
+    // Utility untuk mengambil URL gambar profil (dummy atau dari backend)
+    const resolveImageUrl = (path) => {
+        if (!path) return "";
+        if (/^https?:\/\//i.test(path)) return path;
+        return `${apiUrl}/${path}`; 
+    };
+    
+    // State tambahan untuk profilePictureUrl agar bisa di passing ke GlobalHeader
+    const [profilePictureUrl, setProfilePictureUrl] = useState("");
+    
+    const fetchUserProfile = React.useCallback(async () => {
+        const token = localStorage.getItem("authToken");
+        if (!token) return;
+
+        try {
+            const res = await fetch(`${apiUrl}/users/profile`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            if (res.ok) {
+                const data = await res.json();
+                const path = data.data.profile_picture_path;
+                setProfilePictureUrl(path ? resolveImageUrl(path) : "");
+            }
+        } catch (error) {
+            console.error("Failed to fetch profile picture path:", error);
+        }
+    }, []);
+
+    React.useEffect(() => {
+        if (currentUser) {
+            fetchUserProfile();
+        }
+    }, [currentUser, fetchUserProfile]);
+
 
     const handleFileChange = (event) => {
         const file = event.target.files[0];
@@ -138,40 +172,21 @@ export default function CreateThread() {
     };
 
     return (
-        <div className="bg-gray-100 min-h-screen">
-            {/* Header Global */}
-            <header className="bg-white border-b sticky top-0 z-10">
-                <div className="container mx-auto flex items-center justify-between p-4 gap-4 max-w-4xl">
-                    <div className="text-2xl font-bold text-gray-800 cursor-pointer" onClick={() => navigate('/')}>
-                        GameKom
-                    </div>
-                    <div className="flex-1 max-w-md">
-                        <Input
-                            className="border bg-gray-50 rounded-full px-4 py-2 w-full pl-10"
-                            placeholder="🔍 Search"
-                        />
-                         <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">🔍</span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                        {isLoggedIn() && (
-                            <Button onClick={() => navigate('/create-thread')} className="rounded-full">Post</Button>
-                        )}
-                        <Avatar onClick={() => navigate('/profile')} className="cursor-pointer size-10">
-                            <AvatarFallback>{initials}</AvatarFallback>
-                        </Avatar>
-                    </div>
-                </div>
-            </header>
-
-            {/* Main Content */}
+        <MainLayout 
+            currentUser={currentUser}
+            profilePictureUrl={profilePictureUrl}
+            forceLogout={forceLogout}
+            allowSearch={false} // Disable search di halaman ini
+        >
             <main className="container max-w-2xl mx-auto py-6">
                 <Card className="overflow-hidden">
-                    {/* Header Halaman */}
+                    {/* Header Halaman (Dibuat Manual karena ada Back Button) */}
                     <div className="p-4 flex items-center gap-4 border-b">
                         <button onClick={() => navigate(-1)} className="hover:bg-gray-100 rounded-full p-2 transition-colors">
                             <BackArrowIcon />
                         </button>
-                        <h1 className="text-xl font-bold">Create Post</h1>
+                        {/* Permintaan #3: Ganti Create Post menjadi Create Thread */}
+                        <h1 className="text-xl font-bold">Create Thread</h1> 
                     </div>
 
                     {/* Form */}
@@ -194,7 +209,7 @@ export default function CreateThread() {
                                     id="content"
                                     value={content}
                                     onChange={(e) => setContent(e.target.value)}
-                                    placeholder="What's on your mind? (VULNERABLE XSS)"
+                                    placeholder="What's on your mind?"
                                     className="border-gray-300 min-h-[150px]"
                                     disabled={isSubmitting}
                                 />
@@ -240,6 +255,6 @@ export default function CreateThread() {
                     </div>
                 </Card>
             </main>
-        </div>
+        </MainLayout>
     );
 }

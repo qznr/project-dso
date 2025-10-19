@@ -1,5 +1,3 @@
-// src/pages/Profile.jsx
-
 import * as React from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
@@ -13,8 +11,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea"; 
 import { InputGroup, InputGroupAddon, InputGroupInput, InputGroupButton } from "@/components/ui/input-group";
 import { Form, FormMessage } from "@/components/ui/form";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
-import { User, LogOut, ArrowLeft, EyeIcon, EyeOffIcon } from "lucide-react";
+import { ArrowLeft, EyeIcon, EyeOffIcon } from "lucide-react";
+import MainLayout from '../layouts/MainLayout';
 
 // --- Konstanta dan Validasi ---
 const apiUrl = import.meta.env.VITE_API_URL;
@@ -36,10 +34,6 @@ const EditProfileSchema = z
   )
 
 // --- Helper Functions ---
-function isLoggedIn() {
-    return !!localStorage.getItem("authToken");
-}
-
 function getCurrentUser() {
     const userProfileString = localStorage.getItem("userProfile");
     if (userProfileString) {
@@ -65,64 +59,6 @@ function resolveImageUrl(path) {
   return `${apiUrl}/${path}`; 
 }
 
-// --- Komponen Header Global (Reusable Logic) ---
-function GlobalHeaderContent({ navigate, currentUser, profilePictureUrl, forceLogout }) {
-    const initials = currentUser?.username ? currentUser.username[0].toUpperCase() : 'U';
-
-    return (
-        <>
-            <div className="flex-1 max-w-lg relative">
-                <Input 
-                    className="border bg-gray-50 rounded-full px-4 py-2 w-full pl-10" 
-                    placeholder="Search" 
-                    readOnly // Tampilan saja
-                />
-                <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">🔍</span>
-            </div>
-            
-            <div className="flex items-center gap-3">
-                {isLoggedIn() ? (
-                    <>
-                        {/* TOMBOL POST (Constraint 1 & 2) */}
-                        <Button 
-                            onClick={() => navigate('/create-thread')} 
-                            className="rounded-full"
-                            size="sm"
-                        >
-                            Post
-                        </Button>
-                        
-                        {/* AVATAR DENGAN DROPDOWN MENU */}
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Avatar className="cursor-pointer size-10 shrink-0">
-                                    <AvatarImage src={profilePictureUrl} alt={currentUser.username} />
-                                    <AvatarFallback>{initials}</AvatarFallback>
-                                </Avatar>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-56">
-                                <DropdownMenuItem onClick={() => navigate('/profile')}>
-                                    <User className="mr-2 h-4 w-4" />
-                                    <span>Profile</span>
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem onClick={() => forceLogout("Anda berhasil log out.")} className="text-red-600 focus:text-red-600">
-                                    <LogOut className="mr-2 h-4 w-4" />
-                                    <span>Log Out</span>
-                                </DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                    </>
-                ) : (
-                    <Button onClick={() => navigate('/login')} className="rounded-full">
-                        Login
-                    </Button>
-                )}
-            </div>
-        </>
-    );
-}
-
 
 // --- Komponen Utama Profile ---
 function Profile({ forceLogout }) {
@@ -143,7 +79,7 @@ function Profile({ forceLogout }) {
   const [selectedFile, setSelectedFile] = React.useState(null);
   const [previewUrl, setPreviewUrl] = React.useState("");
   const fileInputRef = React.useRef(null); 
-  const currentUser = getCurrentUser(); // Ambil user saat ini di sini
+  const currentUser = getCurrentUser();
 
   const form = useForm({
     resolver: zodResolver(EditProfileSchema),
@@ -259,7 +195,8 @@ function Profile({ forceLogout }) {
       const fd = new FormData();
       
       if (values.username && values.username !== userProfile.username) fd.append("username", values.username);
-      if (values.bio && values.bio !== userProfile.bio) fd.append("bio", values.bio || "");
+      // Simpan bio walaupun kosong untuk menghapus bio yang sudah ada
+      if (values.bio !== userProfile.bio) fd.append("bio", values.bio || ""); 
       if (values.newPassword) fd.append("password", values.newPassword); 
       
       if (selectedFile) {
@@ -342,52 +279,40 @@ function Profile({ forceLogout }) {
 
   if (loading) {
     return (
-      <div className="min-h-svh bg-gray-100">
-        <header className="bg-white border-b sticky top-0 z-10">
-            <div className="container mx-auto flex items-center justify-between p-4 gap-4 max-w-4xl">
-                <div className="text-2xl font-bold text-gray-800 cursor-pointer" onClick={() => navigate('/')}>
-                    Profile Page
-                </div>
-                {/* Header content while loading */}
-                <GlobalHeaderContent navigate={navigate} currentUser={currentUser} profilePictureUrl={previewUrl} forceLogout={forceLogout} />
-            </div>
-        </header>
-        <main className="container max-w-2xl mx-auto py-6">
-          <p className="text-center text-gray-500">Loading profile data...</p>
-        </main>
-      </div>
+      <MainLayout 
+        currentUser={currentUser}
+        profilePictureUrl={previewUrl}
+        forceLogout={forceLogout}
+        title="Profile Page"
+      >
+        <p className="text-center text-gray-500 py-6">Loading profile data...</p>
+      </MainLayout>
     );
   }
 
   // --- RENDER UTAMA ---
   return (
-    <div className="min-h-svh bg-gray-100">
-      <header className="bg-white border-b sticky top-0 z-10">
-            <div className="container mx-auto flex items-center justify-between p-4 gap-4 max-w-4xl">
-                <div className="text-2xl font-bold text-gray-800 cursor-pointer" onClick={() => navigate('/')}>
-                    Profile Page
-                </div>
-                <GlobalHeaderContent navigate={navigate} currentUser={currentUser} profilePictureUrl={previewUrl} forceLogout={forceLogout} />
-            </div>
-        </header>
-      
-      <main className="container max-w-4xl mx-auto py-6">
-        {/* Konten Utama (Single Column) */}
+    <MainLayout 
+        currentUser={currentUser}
+        profilePictureUrl={previewUrl}
+        forceLogout={forceLogout}
+    >
+      <div className="py-6"> 
         <div className="max-w-2xl mx-auto"> 
           <Card className="p-6">
-            {/* Navigasi dan Title */}
+            {/* Navigasi dan Title (diubah agar Title muncul di MainLayout) */}
             <div className="flex items-center gap-2 mb-4 text-xl font-semibold border-b pb-4">
               <button 
                 onClick={() => setEditing(false)} 
                 className={!editing ? 'hidden' : "hover:bg-gray-100 rounded-full p-1 transition-colors"}>
                 <ArrowLeft className="size-5" />
               </button>
-              <h1>{editing ? 'Edit Profile' : 'Profile'}</h1>
+              <h1 className="text-xl font-bold">{editing ? 'Edit Profile' : 'View Profile'}</h1>
             </div>
 
             {/* Content Profile Card */}
             {editing ? (
-              // --- EDIT MODE (GAMBAR KEDUA FIGMA) ---
+              // --- EDIT MODE ---
               <Form {...form}>
                 <form
                   onSubmit={form.handleSubmit(onSubmit)}
@@ -438,7 +363,7 @@ function Profile({ forceLogout }) {
                     <FormMessage>{form.formState.errors.username?.message}</FormMessage>
                   </div>
 
-                  {/* 2. Bio (Menggunakan Textarea sesuai visual Figma) */}
+                  {/* 2. Bio */}
                   <div className="space-y-2">
                     <label className="font-semibold text-gray-700">Bio</label>
                     <Textarea
@@ -488,7 +413,7 @@ function Profile({ forceLogout }) {
                     <FormMessage>{form.formState.errors.newPassword?.message}</FormMessage>
                   </div>
 
-                  {/* Tombol Save (Sesuai Figma) */}
+                  {/* Tombol Save */}
                   <div className="flex justify-end gap-3 pt-4">
                     <Button type="submit" disabled={loading}>
                       {loading ? "Saving..." : "Save"}
@@ -501,7 +426,7 @@ function Profile({ forceLogout }) {
                 </form>
               </Form>
             ) : (
-              // --- READ MODE (GAMBAR PERTAMA FIGMA) ---
+              // --- READ MODE ---
               <div className="flex flex-col gap-6 pt-2">
                 
                 <div className="flex items-start gap-6">
@@ -518,7 +443,7 @@ function Profile({ forceLogout }) {
                     </div>
                 </div>
 
-                {/* Tombol Edit Profile (Geser ke Kanan) */}
+                {/* Tombol Edit Profile */}
                 <div className="flex justify-end gap-3 pt-4 border-t">
                     <Button onClick={() => setEditing(true)}>
                         Edit Profile
@@ -528,8 +453,8 @@ function Profile({ forceLogout }) {
             )}
           </Card>
         </div>
-      </main>
-    </div>
+      </div>
+    </MainLayout>
   );
 }
 
