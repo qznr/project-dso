@@ -1,15 +1,13 @@
-// app2-fe/src/pages/Home.jsx
-
 import React, { useEffect, useState, useCallback } from 'react';
 import { Card } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import { Input } from '../components/ui/input';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '../components/ui/dropdown-menu'; // Import DropdownMenu components
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '../components/ui/dropdown-menu';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Heart, MessageSquare, LogOut, User } from 'lucide-react'; // Import icons
+import { Heart, MessageSquare, LogOut, User } from 'lucide-react';
 import { toast } from 'sonner'; 
-import { useAuthLogout } from '../App'; // Import useAuthLogout
+import { useAuthLogout } from '../App'; 
 
 // --- Utility Functions ---
 const apiUrl = import.meta.env.VITE_API_URL;
@@ -49,8 +47,67 @@ function useDebounce(value, delay) {
     return debouncedValue;
 }
 
+// --- Component: Header Global (Reusable Logic) ---
+function GlobalHeaderContent({ navigate, currentUser, profilePictureUrl, forceLogout }) {
+    const initials = currentUser?.username ? currentUser.username[0].toUpperCase() : 'U';
+
+    return (
+        <>
+            <div className="flex-1 max-w-lg relative">
+                <Input 
+                    className="border bg-gray-50 rounded-full px-4 py-2 w-full pl-10" 
+                    placeholder="Search" 
+                    readOnly // Tampilan saja
+                />
+                <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">🔍</span>
+            </div>
+            
+            <div className="flex items-center gap-3">
+                {isLoggedIn() ? (
+                    <>
+                        {/* TOMBOL POST (Constraint 1 & 2) */}
+                        <Button 
+                            onClick={() => navigate('/create-thread')} 
+                            className="rounded-full"
+                            size="sm"
+                        >
+                            Post
+                        </Button>
+                        
+                        {/* AVATAR DENGAN DROPDOWN MENU */}
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Avatar className="cursor-pointer size-10 shrink-0">
+                                    <AvatarImage src={profilePictureUrl} alt={currentUser.username} />
+                                    <AvatarFallback>{initials}</AvatarFallback>
+                                </Avatar>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-56">
+                                <DropdownMenuItem onClick={() => navigate('/profile')}>
+                                    <User className="mr-2 h-4 w-4" />
+                                    <span>Profile</span>
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={() => forceLogout("Anda berhasil log out.")} className="text-red-600 focus:text-red-600">
+                                    <LogOut className="mr-2 h-4 w-4" />
+                                    <span>Log Out</span>
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    </>
+                ) : (
+                    <Button onClick={() => navigate('/login')} className="rounded-full">
+                        Login
+                    </Button>
+                )}
+            </div>
+        </>
+    );
+}
+
 // --- Component: ThreadCard (Tidak berubah) ---
 const ThreadCard = ({ thread, navigate, onLikeClick }) => {
+    // ... (kode ThreadCard tetap sama)
     const renderContent = (content) => {
         return <div dangerouslySetInnerHTML={{ __html: content }} />;
     };
@@ -133,7 +190,7 @@ export default function Home() {
     const [searchQuery, setSearchQuery] = useState('');
     const navigate = useNavigate();
     const currentUser = getCurrentUser();
-    const { forceLogout } = useAuthLogout(); // Gunakan forceLogout
+    const { forceLogout } = useAuthLogout(); 
     const debouncedSearchQuery = useDebounce(searchQuery, 500);
     
     const [profilePictureUrl, setProfilePictureUrl] = useState("");
@@ -174,7 +231,6 @@ export default function Home() {
             
             if (!response.ok) {
                 if (response.status === 401 || response.status === 403) {
-                     // Jika terjadi 401/403 saat fetch threads, anggap sesi habis
                     forceLogout("Sesi Anda mungkin telah berakhir saat memuat data.");
                     return;
                 }
@@ -213,7 +269,7 @@ export default function Home() {
         } finally {
             setLoading(false);
         }
-    }, [debouncedSearchQuery, forceLogout]); // Tambahkan forceLogout
+    }, [debouncedSearchQuery, forceLogout]); 
 
     useEffect(() => {
         fetchThreads(debouncedSearchQuery);
@@ -224,8 +280,6 @@ export default function Home() {
             return toast.warning("Login required to like posts.");
         }
         
-        // Placeholder untuk toggle like API call yang akan memicu 401/403
-        // Jika API call gagal 401/403, forceLogout akan dipanggil di tempat lain
         setThreads(currentThread => 
             currentThread.map(thread => {
                 if (thread.id === threadId) {
@@ -243,48 +297,17 @@ export default function Home() {
 
     return (
         <div className="bg-gray-100 min-h-screen">
-            {/* Header (Sesuai Figma) */}
             <header className="bg-white border-b sticky top-0 z-10">
                 <div className="container mx-auto flex items-center justify-between p-4 gap-4 max-w-4xl">
                     <div className="text-2xl font-bold text-gray-800 cursor-pointer" onClick={() => navigate('/')}>
                         GameKom 
                     </div>
-                    <div className="flex-1 max-w-lg relative">
-                        <Input 
-                            className="border bg-gray-50 rounded-full px-4 py-2 w-full pl-10" 
-                            placeholder="Search" 
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                        />
-                         <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">🔍</span>
-                    </div>
-                    
-                    {/* AVATAR DENGAN DROPDOWN MENU */}
-                    <div className="flex items-center gap-3">
-                        {isLoggedIn() ? (
-                            <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                    <Avatar className="cursor-pointer size-10 shrink-0">
-                                        <AvatarImage src={profilePictureUrl} alt={currentUser.username} />
-                                        <AvatarFallback>{initials}</AvatarFallback>
-                                    </Avatar>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end" className="w-56">
-                                    <DropdownMenuItem onClick={() => navigate('/profile')}>
-                                        <User className="mr-2 h-4 w-4" />
-                                        <span>Profile</span>
-                                    </DropdownMenuItem>
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuItem onClick={() => forceLogout()}>
-                                        <LogOut className="mr-2 h-4 w-4" />
-                                        <span>Log Out</span>
-                                    </DropdownMenuItem>
-                                </DropdownMenuContent>
-                            </DropdownMenu>
-                        ) : (
-                            <Button onClick={() => navigate('/login')} className="rounded-full">Login</Button>
-                        )}
-                    </div>
+                    <GlobalHeaderContent 
+                        navigate={navigate} 
+                        currentUser={currentUser} 
+                        profilePictureUrl={profilePictureUrl} 
+                        forceLogout={forceLogout} 
+                    />
                 </div>
             </header>
 
