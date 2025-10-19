@@ -296,6 +296,7 @@ function Profile({ forceLogout }) {
         currentUser={currentUser}
         profilePictureUrl={previewUrl}
         forceLogout={forceLogout}
+        allowSearch={false}
     >
       <div className="py-6"> 
         <div className="max-w-2xl mx-auto"> 
