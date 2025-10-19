@@ -7,6 +7,7 @@ import attachmentRoutes from "./src/routes/attachment.routes.js";
 import fs from 'fs';
 import path from 'path';
 import cors from 'cors';
+import multer from 'multer';
 
 const uploadDir = 'uploads';
 const profileDir = path.join(uploadDir, 'profiles');
@@ -52,10 +53,31 @@ app.use('/uploads', express.static('uploads'));
 
 // Error Handling Middleware
 app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).send({ message: 'Something broke!', error: err.message });
-});
+  // Tangkap error Multer
+  if (err instanceof multer.MulterError) {
+    console.error("Multer Error:", err);
+    return res.status(400).send({ 
+        message: `File upload failed: ${err.message}`, 
+        error: err.code 
+    });
+  }
+  
+  // Tangkap error File System (ENOTDIR) yang tidak tertangkap Multer
+  if (err.code === 'ENOTDIR') {
+      console.error("File System Error:", err);
+      return res.status(500).send({
+          message: "Internal Server Error",
+          error: "ENOTDIR: Direktori file upload bermasalah. Cek konfigurasi volume Docker."
+      });
+  }
 
+  // General Error
+  console.error("General Server Error Stack:", err.stack);
+  res.status(500).send({ 
+    message: 'Something broke!', 
+    error: err.message 
+  });
+});
 
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);

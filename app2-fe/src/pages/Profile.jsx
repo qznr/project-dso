@@ -1,75 +1,157 @@
 // src/pages/Profile.jsx
+
 import * as React from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
-import AuthLayout from "./AuthLayout";
+import { toast } from "sonner";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
-import { Field, FieldContent } from "@/components/ui/field";
+import { Input } from "@/components/ui/input"; 
+import { Textarea } from "@/components/ui/textarea"; 
+import { InputGroup, InputGroupAddon, InputGroupInput, InputGroupButton } from "@/components/ui/input-group";
 import { Form, FormField, FormMessage } from "@/components/ui/form";
-import { UserIcon, MailIcon, Image as ImageIcon } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import { UserIcon, MailIcon, ArrowLeft, EyeIcon, EyeOffIcon, LogOut, User } from "lucide-react";
 
-/**
- * Profile page with inline edit:
- * - GET /profile  -> load profile
- * - PUT /profile  -> save profile (FormData, field 'profile_picture' for file)
- *
- * Notes:
- * - Uses fetch (as project does)
- * - Auth token from localStorage.authToken -> Authorization: Bearer <token>
- * - Production uses /api prefix; local uses /profile directly.
- */
+// --- Konstanta dan Validasi ---
+const apiUrl = import.meta.env.VITE_API_URL;
+const PROFILE_ENDPOINT = `${apiUrl}/users/profile`;
+const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2 MB
 
-const getApiPrefix = () => {
-  // Production prefix uses /api per project note; local uses empty prefix.
-  return import.meta.env.MODE === "production" ? "/api" : "";
-};
+const EditProfileSchema = z
+  .object({
+    username: z.string().min(3, "Username must be at least 3 characters.").optional().or(z.literal("")),
+    bio: z.string().optional(),
+    newPassword: z.string().optional(),
+  })
+  .refine(
+    (data) => !data.newPassword || data.newPassword.length >= 6,
+    {
+      message: "New password must be at least 6 characters.",
+      path: ["newPassword"],
+    }
+  )
 
-const PROFILE_ENDPOINT = `${getApiPrefix()}/profile`;
+// --- Helper Functions ---
+function getInitials(name) {
+  if (!name) return "U";
+  const parts = name.trim().split(" ");
+  if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
+  return (parts[0].charAt(0).toUpperCase() + parts[parts.length - 1].charAt(0).toUpperCase());
+}
 
-function Profile() {
+function resolveImageUrl(path) {
+  if (!path) return "";
+  if (/^https?:\/\//i.test(path)) return path;
+  return `${apiUrl}/${path}`; 
+}
+
+// --- Komponen Layout Mini Post (Kotak Kanan) ---
+function MiniPostBox({ currentUserInitials, navigate }) {
+    return (
+        <Card className="p-4 flex flex-col gap-3">
+            <div className="flex items-start gap-3">
+                <Avatar className="size-10 cursor-pointer" onClick={() => navigate('/profile')}>
+                    <AvatarFallback>{currentUserInitials}</AvatarFallback>
+                </Avatar>
+                <Textarea 
+                    placeholder="Post something..." 
+                    className="flex-1 resize-none border-none focus-visible:ring-0 p-2 min-h-[50px]"
+                    onClick={() => navigate('/create-thread')}
+                    readOnly
+                />
+            </div>
+            <div className="flex justify-between items-center pt-2 border-t">
+                <Button variant="ghost" size="sm" className="text-blue-500 hover:bg-blue-50">
+                    Add Image
+                </Button>
+                <Button size="sm" onClick={() => navigate('/create-thread')}>
+                    Post
+                </Button>
+            </div>
+        </Card>
+    );
+}
+
+// --- Komponen Header Global (Menggunakan Dropdown untuk Avatar) ---
+function GlobalHeader({ navigate, displayName, previewUrl, initials, forceLogout }) {
+    return (
+        <header className="bg-white border-b sticky top-0 z-10">
+            <div className="container mx-auto flex items-center justify-between p-4 gap-4 max-w-4xl">
+                <div className="text-2xl font-bold text-gray-800 cursor-pointer" onClick={() => navigate('/')}>
+                    Profile Page
+                </div>
+                <div className="flex-1 max-w-lg relative">
+                    <Input 
+                        className="border bg-gray-50 rounded-full px-4 py-2 w-full pl-10" 
+                        placeholder="Search" 
+                        readOnly 
+                    />
+                    <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">🔍</span>
+                </div>
+                {/* DROPDOWN MENU */}
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Avatar className="cursor-pointer size-10 shrink-0">
+                            <AvatarImage src={previewUrl} alt={displayName} />
+                            <AvatarFallback>{initials}</AvatarFallback>
+                        </Avatar>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-56">
+                        <DropdownMenuItem onClick={() => navigate('/profile')}>
+                            <User className="mr-2 h-4 w-4" />
+                            <span>Profile</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => forceLogout("Anda berhasil log out.")} className="text-red-600 focus:text-red-600">
+                            <LogOut className="mr-2 h-4 w-4" />
+                            <span>Log Out</span>
+                        </DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
+            </div>
+        </header>
+    );
+}
+
+// --- Komponen Utama Profile ---
+function Profile({ forceLogout }) {
   const navigate = useNavigate();
   const [loading, setLoading] = React.useState(true);
   const [serverError, setServerError] = React.useState(null);
   const [editing, setEditing] = React.useState(false);
+  const [showPassword, setShowPassword] = React.useState(false);
+  
   const [userProfile, setUserProfile] = React.useState({
-    name: "Guest",
+    user_id: null,
+    username: "Guest",
     email: "guest@example.com",
     bio: "No bio available.",
-    photoUrl: "",
+    photoPath: "",
   });
 
-  // For previewing newly selected file before uploading
   const [selectedFile, setSelectedFile] = React.useState(null);
   const [previewUrl, setPreviewUrl] = React.useState("");
+  const fileInputRef = React.useRef(null); 
 
   const form = useForm({
+    resolver: zodResolver(EditProfileSchema),
     defaultValues: {
-      name: "",
-      email: "",
+      username: "",
       bio: "",
+      newPassword: ""
     },
   });
 
-  // Helper: return full URL for image (if backend returns relative path)
-  const resolveImageUrl = (url) => {
-    if (!url) return "";
-    // If already absolute (http/https), return as-is
-    if (/^https?:\/\//i.test(url)) return url;
-    // Otherwise prefix with api base if running production/backend serves static files under the same origin.
-    // If backend serves uploads on same host, this should work; adjust if your backend serves files from another domain.
-    const prefix = ""; // Usually empty because static files served from same origin.
-    return `${prefix}${url}`;
-  };
+  // Helper Functions (getInitials, resolveImageUrl, handlePhotoChange, onSubmit, etc. tidak berubah)
 
-  // Load profile from API
   React.useEffect(() => {
     const token = localStorage.getItem("authToken");
     if (!token) {
-      // not authenticated -> redirect to login
-      navigate("/");
+      navigate("/login");
       return;
     }
 
@@ -84,29 +166,41 @@ function Profile() {
             Accept: "application/json",
           },
         });
-        if (!res.ok) {
-          const text = await res.text();
-          throw new Error(`Failed to fetch profile: ${res.status} ${text}`);
+        
+        if (res.status === 401 || res.status === 403) {
+            forceLogout("Token kedaluwarsa. Silakan login kembali.");
+            return; 
         }
-        const data = await res.json();
-        // Expecting data to contain { name, email, bio, photoUrl } or similar
+
+        if (!res.ok) {
+          const errorData = await res.json();
+          throw new Error(errorData.message || `Failed to fetch profile: ${res.status}`);
+        }
+        
+        const json = await res.json();
+        const fetchedData = json.data;
+
         const profile = {
-          name: data.name || data.fullname || "Unnamed",
-          email: data.email || "no-email@example.com",
-          bio: data.bio || data.profile?.bio || "",
-          // try several likely keys; adapt if your backend uses another property
-          photoUrl: data.photoUrl || data.profile_picture || data.profile?.photoUrl || "",
+          user_id: fetchedData.user_id,
+          username: fetchedData.username || "Unnamed",
+          email: fetchedData.email || "no-email@example.com",
+          bio: fetchedData.bio || "No bio available.",
+          photoPath: fetchedData.profile_picture_path || "",
         };
+
         setUserProfile(profile);
+        
         form.reset({
-          name: profile.name,
-          email: profile.email,
+          username: profile.username,
           bio: profile.bio,
+          newPassword: ""
         });
-        // preview uses server image if exists
-        setPreviewUrl(profile.photoUrl ? resolveImageUrl(profile.photoUrl) : "");
+
+        setPreviewUrl(profile.photoPath ? resolveImageUrl(profile.photoPath) : "");
+
       } catch (err) {
         console.error(err);
+        toast.error("Gagal memuat profil.", { description: err.message || "Unknown error" });
         setServerError(err.message || "Unknown error");
       } finally {
         setLoading(false);
@@ -115,29 +209,24 @@ function Profile() {
 
     fetchProfile();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [navigate]);
+  }, [navigate, forceLogout]); 
 
-  // Compute initials for AvatarFallback
-  const getInitials = (name) => {
-    if (!name) return "U";
-    const parts = name.trim().split(" ");
-    if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
-    return (
-      parts[0].charAt(0).toUpperCase() +
-      parts[parts.length - 1].charAt(0).toUpperCase()
-    );
-  };
-
-  // Handle file selection (preview)
   const handlePhotoChange = (e) => {
     const file = e.target.files?.[0];
     if (!file) {
       setSelectedFile(null);
-      // if user removed file, revert preview to server image
-      setPreviewUrl(userProfile.photoUrl ? resolveImageUrl(userProfile.photoUrl) : "");
+      setPreviewUrl(userProfile.photoPath ? resolveImageUrl(userProfile.photoPath) : "");
       return;
     }
-    // preview local file
+
+    if (file.size > MAX_FILE_SIZE) {
+        toast.error("File terlalu besar.", { description: `Ukuran maksimal adalah ${MAX_FILE_SIZE / 1024 / 1024}MB.` });
+        e.target.value = null; 
+        setSelectedFile(null);
+        setPreviewUrl(userProfile.photoPath ? resolveImageUrl(userProfile.photoPath) : "");
+        return;
+    }
+
     const reader = new FileReader();
     reader.onload = () => {
       setPreviewUrl(reader.result);
@@ -146,12 +235,11 @@ function Profile() {
     setSelectedFile(file);
   };
 
-  // Submit handler -> PUT /profile
   const onSubmit = async (values) => {
     const token = localStorage.getItem("authToken");
     if (!token) {
-      alert("Authentication token missing. Please login again.");
-      navigate("/");
+      toast.error("Autentikasi hilang.", { description: "Silahkan login kembali." });
+      navigate("/login");
       return;
     }
 
@@ -159,246 +247,294 @@ function Profile() {
       setLoading(true);
       setServerError(null);
 
-      // Build FormData because we may include a file
       const fd = new FormData();
-      fd.append("name", values.name);
-      fd.append("email", values.email);
-      fd.append("bio", values.bio || "");
+      
+      if (values.username && values.username !== userProfile.username) fd.append("username", values.username);
+      if (values.bio && values.bio !== userProfile.bio) fd.append("bio", values.bio || "");
+      if (values.newPassword) fd.append("password", values.newPassword); 
+      
       if (selectedFile) {
-        fd.append("profile_picture", selectedFile); // field name per upload.js
+        fd.append("profile_picture", selectedFile); 
+      }
+      
+      if (fd.keys().next().done && !selectedFile && !values.newPassword) {
+        toast.info("Tidak ada perubahan untuk disimpan.");
+        setEditing(false);
+        setLoading(false);
+        return;
       }
 
       const res = await fetch(PROFILE_ENDPOINT, {
         method: "PUT",
         headers: {
           Authorization: `Bearer ${token}`,
-          // NOTE: don't set Content-Type for FormData; browser sets it automatically
           Accept: "application/json",
         },
         body: fd,
       });
 
+      if (res.status === 401 || res.status === 403) {
+        forceLogout("Token kedaluwarsa saat memperbarui profil. Silakan login kembali.");
+        return; 
+      }
+      
       if (!res.ok) {
-        const bodyText = await res.text();
-        throw new Error(`Failed to update profile: ${res.status} ${bodyText}`);
+        const errorData = await res.json();
+        throw new Error(errorData.message || `Failed to update profile: ${res.status}`);
       }
 
       const updated = await res.json();
-
-      // Update UI using response; try to read return fields
+      const updatedUser = updated.user;
+      
       const newProfile = {
-        name: updated.name || values.name,
-        email: updated.email || values.email,
-        bio: updated.bio || values.bio || "",
-        // backend may return path in updated.photoUrl or updated.profile_picture
-        photoUrl: updated.photoUrl || updated.profile_picture || userProfile.photoUrl || "",
+        user_id: userProfile.user_id,
+        username: updatedUser.username || values.username || userProfile.username,
+        email: updatedUser.email || userProfile.email,
+        bio: updatedUser.bio || values.bio || userProfile.bio,
+        photoPath: updatedUser.profile_picture_path || userProfile.photoPath || "",
       };
 
       setUserProfile(newProfile);
+      
+      localStorage.setItem(
+          "userProfile", 
+          JSON.stringify({
+            user_id: newProfile.user_id,
+            username: newProfile.username,
+            email: newProfile.email
+          })
+      );
+
       form.reset({
-        name: newProfile.name,
-        email: newProfile.email,
+        username: newProfile.username,
         bio: newProfile.bio,
+        newPassword: ""
       });
 
-      // Reset selected file (we already updated preview to server path if returned)
       setSelectedFile(null);
-      setPreviewUrl(newProfile.photoUrl ? resolveImageUrl(newProfile.photoUrl) : "");
-
-      // Close edit mode
+      if (fileInputRef.current) fileInputRef.current.value = null; 
+      setPreviewUrl(newProfile.photoPath ? resolveImageUrl(newProfile.photoPath) : "");
       setEditing(false);
 
-      // Optionally inform user
-      alert("Profile updated successfully.");
+      toast.success("Profile updated successfully!");
     } catch (err) {
       console.error(err);
       setServerError(err.message || "Update failed");
-      alert("Failed to update profile: " + (err.message || ""));
+      toast.error("Failed to update profile.", { description: err.message || "" });
+      
+      if (fileInputRef.current) fileInputRef.current.value = null;
+      setSelectedFile(null);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleLogout = () => {
-    const confirmLogout = window.confirm("Are you sure you want to log out?");
-    if (confirmLogout) {
-      localStorage.removeItem("authToken");
-      // Do NOT delete server-side profile: just remove token; subsequent login will fetch profile from server
-      navigate("/");
-    }
-  };
+  const currentUserInitials = getInitials(userProfile.username);
 
-  // Render
+  if (loading) {
+    return (
+      <div className="min-h-svh bg-gray-100">
+        <GlobalHeader navigate={navigate} displayName="Loading" initials="L" previewUrl={previewUrl} forceLogout={forceLogout} />
+        <main className="container max-w-4xl mx-auto py-6">
+          <p className="text-center text-gray-500">Loading profile data...</p>
+        </main>
+      </div>
+    );
+  }
+
+  // --- RENDER UTAMA ---
   return (
-    <AuthLayout title="My Profile">
-      <Card className="shadow-lg">
-        <CardHeader className="text-center">
-          <Avatar className="mx-auto size-24 mb-4">
-            {previewUrl ? (
-              <AvatarImage src={previewUrl} alt={userProfile.name} />
-            ) : (
-              <AvatarFallback>{getInitials(userProfile.name)}</AvatarFallback>
-            )}
-          </Avatar>
-          <CardTitle className="text-2xl font-bold">{userProfile.name}</CardTitle>
-          <p className="text-muted-foreground">{userProfile.email}</p>
-        </CardHeader>
+    <div className="min-h-svh bg-gray-100">
+      {/* HEADER GLOBAL (Menggunakan Dropdown) */}
+      <GlobalHeader 
+        navigate={navigate} 
+        displayName={userProfile.username} 
+        previewUrl={previewUrl}
+        initials={currentUserInitials}
+        forceLogout={forceLogout} // Teruskan prop forceLogout
+      />
+      
+      <main className="container max-w-4xl mx-auto py-6 flex gap-6">
+        {/* Kolom Kiri: PROFILE CARD (Sesuai Figma) */}
+        <div className="flex-1 min-w-0">
+          <Card className="p-6">
+            {/* Navigasi dan Title */}
+            <div className="flex items-center gap-2 mb-4 text-xl font-semibold border-b pb-4">
+              <button 
+                onClick={() => setEditing(false)} 
+                className={!editing ? 'hidden' : "hover:bg-gray-100 rounded-full p-1 transition-colors"}>
+                <ArrowLeft className="size-5" />
+              </button>
+              <h1>{editing ? 'Edit Profile' : 'Profile'}</h1>
+            </div>
 
-        <CardContent className="space-y-4">
-          {/* Read mode */}
-          {!editing && (
-            <>
-              <div>
-                <h3 className="font-semibold text-lg">Bio</h3>
-                <p className="text-sm text-muted-foreground">
-                  {userProfile.bio || "No bio available."}
-                </p>
-              </div>
-
-              <div className="flex flex-col gap-2 mt-4">
-                <Button className="w-full" onClick={() => setEditing(true)}>
-                  Edit Profile
-                </Button>
-
-                <Button className="w-full" variant="destructive" onClick={handleLogout}>
-                  Log Out
-                </Button>
-              </div>
-            </>
-          )}
-
-          {/* Edit mode */}
-          {editing && (
-            <Form {...form}>
-              <form
-                onSubmit={form.handleSubmit(onSubmit)}
-                className="space-y-4"
-                encType="multipart/form-data"
-              >
-                {/* Photo upload */}
-                <div className="flex flex-col items-center gap-4 mb-6">
-                  <Avatar className="size-24 border-2 border-primary">
-                    {previewUrl ? (
+            {/* Content Profile Card */}
+            {editing ? (
+              // --- EDIT MODE (GAMBAR KEDUA FIGMA) ---
+              <Form {...form}>
+                <form
+                  onSubmit={form.handleSubmit(onSubmit)}
+                  className="space-y-6"
+                  encType="multipart/form-data"
+                >
+                  {/* Avatar dan Change Avatar Button */}
+                  <div className="flex flex-col items-center gap-2 mb-6">
+                    <Avatar className="size-24 border-2 border-primary">
                       <AvatarImage src={previewUrl} alt="Profile Photo" />
-                    ) : (
-                      <AvatarFallback>{getInitials(form.watch("name") || "Guest")}</AvatarFallback>
+                      <AvatarFallback className="text-2xl">{getInitials(form.watch("username") || "Guest")}</AvatarFallback>
+                    </Avatar>
+                    
+                    <label 
+                      htmlFor="profile-picture-upload"
+                      className="text-primary hover:underline cursor-pointer text-sm font-medium"
+                    >
+                      Change Avatar
+                    </label>
+                    
+                    <input 
+                      id="profile-picture-upload"
+                      type="file"
+                      accept="image/*"
+                      onChange={handlePhotoChange}
+                      className="sr-only"
+                      ref={fileInputRef}
+                    />
+                    {/* Display status of file selected */}
+                    {selectedFile && (
+                        <p className="text-sm text-green-600 mt-2">
+                           File: {selectedFile.name} (Max 2MB) siap diunggah.
+                        </p>
                     )}
-                  </Avatar>
-                  <Field orientation="vertical" className="w-full">
-                    <FieldContent>
-                      <InputGroup>
-                        <InputGroupAddon>
-                          <ImageIcon />
+                    
+                  </div>
+
+                  {/* 1. Username */}
+                  <div className="space-y-2">
+                    <label className="font-semibold text-gray-700">Username</label>
+                    <InputGroup>
+                      <InputGroupInput
+                        placeholder="Username"
+                        aria-label="Username"
+                        {...form.register("username")}
+                      />
+                    </InputGroup>
+                    <FormMessage>{form.formState.errors.username?.message}</FormMessage>
+                  </div>
+
+                  {/* 2. Bio (Menggunakan Textarea sesuai visual Figma) */}
+                  <div className="space-y-2">
+                    <label className="font-semibold text-gray-700">Bio</label>
+                    <Textarea
+                      placeholder="Bio"
+                      aria-label="Bio"
+                      rows={4}
+                      {...form.register("bio")}
+                    />
+                    <FormMessage>{form.formState.errors.bio?.message}</FormMessage>
+                  </div>
+                  
+                  {/* 3. Email (Disabled) */}
+                  <div className="space-y-2">
+                    <label className="font-semibold text-gray-700">Email</label>
+                    <InputGroup>
+                      <InputGroupInput
+                        type="email"
+                        placeholder="Email"
+                        aria-label="Email"
+                        value={userProfile.email}
+                        disabled 
+                      />
+                    </InputGroup>
+                    <p className="text-xs text-muted-foreground">Email tidak dapat diubah.</p>
+                  </div>
+                  
+                  {/* 4. Password (New Password) */}
+                  <div className="space-y-2">
+                    <label className="font-semibold text-gray-700">New Password</label>
+                    <InputGroup>
+                      <InputGroupInput
+                        type={showPassword ? "text" : "password"}
+                        placeholder="Leave blank to keep current password"
+                        {...form.register("newPassword")}
+                      />
+                       <InputGroupAddon align="inline-end">
+                          <InputGroupButton
+                            type="button"
+                            onClick={() => setShowPassword((prev) => !prev)}
+                            size="icon-xs"
+                            variant="ghost"
+                          >
+                            {showPassword ? <EyeOffIcon /> : <EyeIcon />}
+                          </InputGroupButton>
                         </InputGroupAddon>
-                        <InputGroupInput
-                          type="file"
-                          accept="image/*"
-                          onChange={handlePhotoChange}
-                          className="cursor-pointer"
-                        />
-                      </InputGroup>
-                    </FieldContent>
-                  </Field>
+                    </InputGroup>
+                    <FormMessage>{form.formState.errors.newPassword?.message}</FormMessage>
+                  </div>
+
+                  {/* Tombol Save dan Cancel (Sesuai Figma) */}
+                  <div className="flex justify-end gap-3 pt-4">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={() => {
+                        form.reset({
+                          username: userProfile.username,
+                          bio: userProfile.bio,
+                          newPassword: ""
+                        });
+                        setSelectedFile(null);
+                        if (fileInputRef.current) fileInputRef.current.value = null;
+                        setPreviewUrl(userProfile.photoPath ? resolveImageUrl(userProfile.photoPath) : "");
+                        setEditing(false);
+                        setServerError(null);
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                    <Button type="submit" disabled={loading}>
+                      {loading ? "Saving..." : "Save"}
+                    </Button>
+                  </div>
+                  
+                  {serverError && (
+                      <p className="text-sm text-destructive mt-4 text-center">Error: {serverError}</p>
+                  )}
+                </form>
+              </Form>
+            ) : (
+              // --- READ MODE (GAMBAR PERTAMA FIGMA) ---
+              <div className="flex flex-col gap-6 pt-2">
+                
+                <div className="flex items-start gap-6">
+                    <Avatar className="size-28 border-2 border-primary shrink-0">
+                      <AvatarImage src={previewUrl} alt={userProfile.username} />
+                      <AvatarFallback className="text-2xl">{currentUserInitials}</AvatarFallback>
+                    </Avatar>
+                    
+                    <div className="flex flex-col gap-1">
+                        <h2 className="text-2xl font-bold">{userProfile.username}</h2>
+                        <p className="text-sm text-muted-foreground whitespace-pre-line">
+                            {userProfile.bio}
+                        </p>
+                    </div>
                 </div>
 
-                {/* Name */}
-                <FormField
-                  control={form.control}
-                  name="name"
-                  render={({ field, fieldState }) => (
-                    <Field orientation="vertical">
-                      <FieldContent>
-                        <InputGroup>
-                          <InputGroupAddon>
-                            <UserIcon />
-                          </InputGroupAddon>
-                          <InputGroupInput
-                            placeholder="Full name"
-                            aria-label="Full name"
-                            aria-invalid={fieldState.invalid}
-                            {...field}
-                          />
-                        </InputGroup>
-                        <FormMessage />
-                      </FieldContent>
-                    </Field>
-                  )}
-                />
-
-                {/* Email */}
-                <FormField
-                  control={form.control}
-                  name="email"
-                  render={({ field, fieldState }) => (
-                    <Field orientation="vertical">
-                      <FieldContent>
-                        <InputGroup>
-                          <InputGroupAddon>
-                            <MailIcon />
-                          </InputGroupAddon>
-                          <InputGroupInput
-                            type="email"
-                            placeholder="Email"
-                            aria-label="Email"
-                            aria-invalid={fieldState.invalid}
-                            {...field}
-                          />
-                        </InputGroup>
-                        <FormMessage />
-                      </FieldContent>
-                    </Field>
-                  )}
-                />
-
-                {/* Bio */}
-                <FormField
-                  control={form.control}
-                  name="bio"
-                  render={({ field }) => (
-                    <Field orientation="vertical">
-                      <FieldContent>
-                        <InputGroup>
-                          <InputGroupInput placeholder="Short bio" aria-label="Short bio" {...field} />
-                        </InputGroup>
-                      </FieldContent>
-                    </Field>
-                  )}
-                />
-
-                {/* Buttons */}
-                <div className="flex gap-2 mt-4">
-                  <Button type="submit" className="flex-1" disabled={loading}>
-                    {loading ? "Saving..." : "Save Changes"}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    className="flex-1"
-                    onClick={() => {
-                      // revert changes: reset form to last saved profile
-                      form.reset({
-                        name: userProfile.name,
-                        email: userProfile.email,
-                        bio: userProfile.bio,
-                      });
-                      setSelectedFile(null);
-                      setPreviewUrl(userProfile.photoUrl ? resolveImageUrl(userProfile.photoUrl) : "");
-                      setEditing(false);
-                    }}
-                  >
-                    Cancel
-                  </Button>
+                <div className="flex justify-end gap-3 pt-4 border-t">
+                    <Button onClick={() => setEditing(true)}>
+                        Edit Profile
+                    </Button>
                 </div>
-              </form>
-            </Form>
-          )}
+              </div>
+            )}
+          </Card>
+        </div>
 
-          {serverError && (
-            <p className="text-sm text-destructive mt-2">Error: {serverError}</p>
-          )}
-        </CardContent>
-      </Card>
-    </AuthLayout>
+        {/* Kolom Kanan: MINI POST BOX (Sesuai Figma) */}
+        <div className="w-1/3 min-w-[250px] hidden lg:block">
+            <MiniPostBox currentUserInitials={currentUserInitials} navigate={navigate} />
+        </div>
+      </main>
+    </div>
   );
 }
 

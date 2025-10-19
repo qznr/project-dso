@@ -10,19 +10,36 @@ import Login from "./pages/Login"
 import Register from "./pages/Register"
 import Profile from "./pages/Profile" // Protected content
 import HomePage from "./pages/Home"
-import Thread from "./pages/Thread" // Impor komponen Thread
-import CreateThread from "./pages/CreateThread" // <-- 1. Impor komponen CreateThread
+import Thread from "./pages/Thread" 
+import CreateThread from "./pages/CreateThread" 
 import { Button } from "./components/ui/button"
+import { toast } from "sonner" 
 
 // --- Auth Utilities ---
+
+// 1. Hook kustom untuk menangani Force Logout (Central Logic)
+export function useAuthLogout() {
+  const navigate = useNavigate();
+
+  const forceLogout = React.useCallback((message = "Sesi Anda telah berakhir.") => {
+    localStorage.removeItem("authToken");
+    localStorage.removeItem("userProfile");
+    toast.error("Sesi Habis", { description: message });
+    navigate("/login", { replace: true }); 
+  }, [navigate]);
+
+  return { forceLogout };
+}
+
 
 // Wrapper untuk injeksi props navigasi dan handler sukses
 const useAuth = () => {
   const navigate = useNavigate()
+  const { forceLogout } = useAuthLogout(); 
 
   const handleLoginSuccess = (data) => {
     console.log("User logged in successfully:", data)
-    navigate("/profile") // Redirect ke Profile setelah login
+    navigate("/profile") 
   }
 
   const handleRegisterSuccess = () => {
@@ -36,6 +53,7 @@ const useAuth = () => {
     onRegisterSuccess: handleRegisterSuccess,
     onLoginClick: () => navigate("/login"),
     onRegisterClick: () => navigate("/register"),
+    forceLogout: forceLogout
   }
 }
 
@@ -46,14 +64,14 @@ function AuthRouteWrapper({ element }) {
 
 // Komponen pelindung untuk route yang memerlukan token
 function ProtectedRoute({ children }) {
-  const token = localStorage.getItem("authToken")
-  
-  if (!token) {
-    // Jika tidak ada token, arahkan ke halaman login
-    return <Navigate to="/login" replace />;
-  }
-  
-  return children;
+  const token = localStorage.getItem("authToken");
+  
+  if (!token) {
+    return <Navigate to="/login" replace />;
+  }
+  
+  const { forceLogout } = useAuthLogout();
+  return React.cloneElement(children, { forceLogout });
 }
 
 // --- App Component ---
