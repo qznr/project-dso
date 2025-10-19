@@ -16,7 +16,7 @@ export const getThreads = async (req, res) => {
                     content: true,
                     created_at: true,
                     author: {
-                        select: { username: true }
+                        select: { username: true, profile_picture_path: true }
                     },
                     attachments: {
                         select: { file_path: true }
@@ -65,13 +65,13 @@ export const getThreadDetail = async (req, res) => {
             where: { thread_id: threadId },
             include: {
                 author: {
-                    select: { username: true }
+                    select: { username: true, profile_picture_path: true }
                 },
                 attachments: true,
                 posts: {
                     include: {
                         author: {
-                            select: { username: true }
+                            select: { username: true, profile_picture_path: true }
                         },
                         _count: {
                             select: { postLikes: true }
@@ -122,7 +122,8 @@ export const searchThreads = async (req, res) => {
                 t.title, 
                 t.content, 
                 t.created_at, 
-                u.username AS author_username
+                u.username AS author_username,
+                u.profile_picture_path AS author_profile_picture_path
             FROM "thread" t
             JOIN "user" u ON t.user_id = u.user_id
             WHERE t.title ILIKE '%${keyword}%' OR t.content ILIKE '%${keyword}%'

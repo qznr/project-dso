@@ -161,7 +161,7 @@ export const getPostsByThread = async (req, res) => {
                 skip: skip,
                 take: limit,
                 include: {
-                    author: { select: { username: true } },
+                    author: { select: { username: true, profile_picture_path: true } },
                     _count: { select: { postLikes: true } },
                     attachments: true
                 },
