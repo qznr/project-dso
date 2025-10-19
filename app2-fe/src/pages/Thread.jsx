@@ -545,6 +545,7 @@ export default function ThreadPage({ forceLogout }) {
                     <div className="p-4 bg-white border-b border-gray-200">
                         <div className="flex gap-3">
                             <Avatar className="w-10 h-10">
+                                <AvatarImage src={profilePictureUrl} alt={currentUser?.username} />
                                 <AvatarFallback>{getInitials(currentUser?.username)}</AvatarFallback>
                             </Avatar>
                             <div className="flex-1">

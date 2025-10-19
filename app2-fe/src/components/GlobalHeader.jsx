@@ -14,7 +14,6 @@ function getInitials(name) {
     return (parts[0].charAt(0).toUpperCase() + parts[parts.length - 1].charAt(0).toUpperCase());
 }
 
-// GlobalHeader hanya bertanggung jawab pada UI header dan navigasi dasar
 export default function GlobalHeader({ 
     currentUser, 
     profilePictureUrl, 
@@ -49,19 +48,16 @@ export default function GlobalHeader({
                 <div className="flex items-center gap-3 shrink-0">
                     {isLoggedIn ? (
                         <>
-                            {/* TOMBOL NEW THREAD (Permintaan #3: Ganti Post menjadi Thread) */}
                             <Button 
                                 onClick={() => navigate('/create-thread')} 
                                 className="rounded-full"
                                 size="sm"
                             >
-                                New Thread
+                                Create
                             </Button>
                             
-                            {/* AVATAR DENGAN DROPDOWN MENU */}
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
-                                    {/* Menggunakan profilePictureUrl dari prop (Permintaan #4) */}
                                     <Avatar className="cursor-pointer size-10 shrink-0">
                                         <AvatarImage src={profilePictureUrl} alt={currentUser.username} />
                                         <AvatarFallback>{initials}</AvatarFallback>
