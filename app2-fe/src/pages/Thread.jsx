@@ -58,9 +58,9 @@ function resolveImageUrl(path) {
 
 
 // Komponen untuk menampilkan sebuah Post
-const PostItem = ({ post, isMainThread = false, currentUserId, onPostDeleted, onPostEdited }) => {
+const PostItem = ({ post, isMainThread = false, currentUserId, onPostDeleted, onPostEdited, currentUser }) => {
     if (!post || !post.author) return null; 
-
+    const navigate = useNavigate(); 
     const isReply = !isMainThread;
     
     const isOwner = post.author.user_id === currentUserId; 
@@ -103,7 +103,7 @@ const PostItem = ({ post, isMainThread = false, currentUserId, onPostDeleted, on
 
                 toast.success("Thread berhasil diperbarui.");
                 setIsEditDialogOpen(false);
-                onPostEdited(); // Muat ulang data
+                onPostEdited();
             } catch (error) {
                 toast.error("Gagal mengedit thread.", { description: error.message });
             }
@@ -128,12 +128,22 @@ const PostItem = ({ post, isMainThread = false, currentUserId, onPostDeleted, on
 
                 toast.success("Post berhasil diperbarui.");
                 setIsEditDialogOpen(false);
-                onPostEdited(); // Muat ulang data
+                onPostEdited();
             } catch (error) {
                 toast.error("Gagal mengedit post.");
             }
         }
     };
+
+    const handleProfileClick = (e) => {
+        e.stopPropagation();
+        const postAuthorUsername = post.author.username;
+        if (currentUser && currentUser.username === postAuthorUsername) {
+            navigate(`/profile`);
+        } else {
+            navigate(`/users/${postAuthorUsername}`);
+        }
+    }
 
     // --- Handler Delete ---
     const handleDeletePost = async () => {
@@ -171,13 +181,13 @@ const PostItem = ({ post, isMainThread = false, currentUserId, onPostDeleted, on
             <Card className={`p-4 border-none shadow-none`}>
                 <div className="flex justify-between items-start mb-2">
                     {/* Header Post */}
-                    <div className="flex gap-3 items-center">
+                    <div className="flex gap-3 items-center cursor-pointer" onClick={handleProfileClick}>
                         <Avatar>
                             <AvatarImage src={authorAvatarUrl} alt={post.author.username} />
                             <AvatarFallback>{authorInitials}</AvatarFallback>
                         </Avatar>
                         <div>
-                            <div className="font-bold">@{post.author.username || 'Unknown'}</div>
+                            <div className="font-bold hover:underline">@{post.author.username || 'Unknown'}</div>
                             <div className="text-xs text-gray-500">{post.createdAt || "Date not available"}</div>
                         </div>
                     </div>
@@ -535,6 +545,7 @@ export default function ThreadPage({ forceLogout }) {
                         post={mainThread} 
                         isMainThread={true} 
                         currentUserId={currentUserId}
+                        currentUser={currentUser}
                         onPostEdited={fetchThreadData}
                         onPostDeleted={handlePostDeleted} 
                     />
@@ -568,7 +579,6 @@ export default function ThreadPage({ forceLogout }) {
                                     </div>
                                 )}
                                 <div className="flex justify-between items-center mt-3 gap-2">
-                                    {/* Input file tersembunyi */}
                                     <input 
                                         type="file" 
                                         ref={fileInputRef} 
@@ -609,6 +619,7 @@ export default function ThreadPage({ forceLogout }) {
                                 post={post} 
                                 isMainThread={false} 
                                 currentUserId={currentUserId}
+                                currentUser={currentUser}
                                 onPostDeleted={handlePostDeleted} 
                                 onPostEdited={fetchThreadData}  
                             />

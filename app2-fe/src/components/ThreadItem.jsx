@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Heart, MessageSquare } from 'lucide-react';
+import { Heart, MessageSquare } from 'lucide-react'; 
 
 import { Card } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -14,10 +14,22 @@ function resolveImageUrl(path) {
     return `${apiUrl}/${path}`; 
 }
 
-// ThreadItem menggantikan ThreadCard
+function getCurrentUser() {
+    const userProfileString = localStorage.getItem("userProfile");
+    if (userProfileString) {
+        try {
+            return JSON.parse(userProfileString);
+        } catch (e) {
+            return null;
+        }
+    }
+    return null;
+}
+
+
 export default function ThreadItem({ thread, onLikeClick }) {
     const navigate = useNavigate();
-
+    const currentUser = getCurrentUser();
     // PERHATIAN: Ini adalah implementasi SANGAT TIDAK AMAN yang sengaja 
     // digunakan untuk mensimulasikan dan menguji kerentanan XSS (A03)
     const renderContent = (content) => {
@@ -29,6 +41,16 @@ export default function ThreadItem({ thread, onLikeClick }) {
 
     const initials = thread.username ? thread.username[0].toUpperCase() : 'U';
     const authorAvatarUrl = thread.authorProfilePicturePath ? resolveImageUrl(thread.authorProfilePicturePath) : ''; 
+    const username = thread.username;
+    
+    const handleProfileClick = (e) => {
+        e.stopPropagation();
+        if (currentUser && currentUser.username === username) {
+            navigate(`/profile`);
+        } else {
+            navigate(`/users/${username}`);
+        }
+    }
 
     return (
         <Card 
@@ -36,14 +58,17 @@ export default function ThreadItem({ thread, onLikeClick }) {
             onClick={handleCardClick}
         >
             <div className="flex gap-3 items-center mb-3">
-                <Avatar className="size-10">
-                    <AvatarImage src={authorAvatarUrl} alt={thread.username} /> {/* Menggunakan AvatarImage */}
-                    <AvatarFallback>{initials}</AvatarFallback>
-                </Avatar>
-                <div>
-                    <div className="font-bold text-gray-800">@{thread.username}</div>
-                    <div className="text-xs text-gray-500">
-                        {new Date(thread.createdAt).toLocaleTimeString()} • {new Date(thread.createdAt).toLocaleDateString()}
+                {/* Bagian yang Dapat Diklik */}
+                <div className="flex gap-3 items-center cursor-pointer" onClick={handleProfileClick}>
+                    <Avatar className="size-10 shrink-0">
+                        <AvatarImage src={authorAvatarUrl} alt={username} /> 
+                        <AvatarFallback>{initials}</AvatarFallback>
+                    </Avatar>
+                    <div>
+                        <div className="font-bold text-gray-800 hover:underline">@{username}</div>
+                        <div className="text-xs text-gray-500">
+                            {new Date(thread.createdAt).toLocaleTimeString()} • {new Date(thread.createdAt).toLocaleDateString()}
+                        </div>
                     </div>
                 </div>
             </div>
@@ -56,6 +81,7 @@ export default function ThreadItem({ thread, onLikeClick }) {
                 </div>
             </div>
 
+            {/* Displaying first image attachment */}
             {thread.images && thread.images.length > 0 && (
                 <div className="w-full h-auto max-h-80 bg-gray-200 rounded-md overflow-hidden my-3">
                     <img 
