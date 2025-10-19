@@ -85,16 +85,12 @@ function App() {
           <Route path="/" element={<HomePage />} />
           <Route path="/login" element={<AuthRouteWrapper element={<Login />} />} />
           <Route path="/register" element={<AuthRouteWrapper element={<Register />} />} />
-          
-          {/* Public Profile Route */}
           <Route path="/users/:username" element={<PublicProfile />} /> 
           
           <Route
             path="/thread/:id"
             element={
-              <ProtectedRoute>
-                <Thread />
-              </ProtectedRoute>
+              <Thread />
             }
           />
           
