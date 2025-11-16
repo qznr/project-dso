@@ -120,11 +120,6 @@ export default function Home() {
 
         } catch (error) {
             console.error("Gagal mengambil data threads:", error);
-            if (error.message.includes('SQLi')) {
-                toast.error("SQL Injection Detected (A03)", { description: error.message });
-            } else {
-                toast.error("Failed to load threads.", { description: error.message });
-            }
             setThreads([]);
         } finally {
             setLoading(false);
