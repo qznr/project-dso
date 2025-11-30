@@ -23,7 +23,7 @@ pipeline {
             steps {
                 echo "Running pre-installed Semgrep with custom rule..."
                 
-                sh '/home/jenkins/.local/bin/semgrep scan --config ./rules6.yml .'
+                sh '/home/jenkins/.local/bin/semgrep scan --config ./rules6.yml --error .'
             }
         }
 
